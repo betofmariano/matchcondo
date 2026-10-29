@@ -94,6 +94,7 @@ export function normalizeMapaMensalPorSemanaFromApi(raw: unknown): MapaDiarioFut
     atividades_id: atividadesId,
     atividade: '',
     dataAtividade,
+    /** Liberação para reserva neste slot mensal; usado no countdown. */
     dataLiberacao: readTimestamp(record, ['dataLiberacao', 'data_liberacao']),
     limiteCancelamento: readTimestamp(record, ['limiteCancelamento', 'limite_cancelamento']),
     limiteReserva: null,

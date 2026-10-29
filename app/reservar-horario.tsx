@@ -16,15 +16,16 @@ import { AuthButton } from '@/components/auth-button';
 import { MapaMensalPorSemanaGrid } from '@/components/mapa-mensal-por-semana-grid';
 import { MapaMensalPorSemanaSemanaSelector } from '@/components/mapa-mensal-por-semana-selector';
 import { MapaDiarioFuturoList } from '@/components/mapa-diario-futuro-list';
+import { MapaSemanalGrid } from '@/components/mapa-semanal-grid';
 import { MapaDiarioUnidadeTabs } from '@/components/mapa-diario-unidade-tabs';
 import { MapaLiberacaoCountdown } from '@/components/mapa-liberacao-countdown';
 import { MeusLocaisModal } from '@/components/meus-locais-modal';
 import { OkMessageModal } from '@/components/ok-message-modal';
-import { ReservaSucessoContinuarModal } from '@/components/reserva-sucesso-continuar-modal';
 import { ScreenHeader, ScreenHeaderDivider } from '@/components/screen-header';
 import { UsuarioAutocomplete } from '@/components/usuario-autocomplete';
 import { WebScreenContainer } from '@/components/web-screen-container';
 import { WEB_MAX_CONTENT_WIDTH } from '@/constants/web-layout';
+import { useAppDialog } from '@/contexts/app-dialog-context';
 import { useAppToast } from '@/contexts/app-toast-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useUserContext } from '@/contexts/user-context';
@@ -39,8 +40,12 @@ import {
   getCriarReservaModalTitle,
 } from '@/constants/criar-reserva-messages';
 import type { MapaDiarioFuturoItem } from '@/types/mapa-diario-futuro';
+import type { MapaSemanalItem } from '@/types/mapa-semanal';
+import type { CriarReservaResponse } from '@/types/reserva';
+import { formatDiaSemanaLabel, formatHoraMinutos } from '@/utils/atividade-programacao';
 import {
   CAPACIDADE_ESGOTADA_MESSAGE,
+  formatMapaDiarioFuturoDataLabel,
   mapaDiarioFuturoTemCapacidadeDisponivel,
 } from '@/utils/mapa-diario-futuro';
 import {
@@ -74,6 +79,7 @@ function parseRouteText(value: string | string[] | undefined): string {
 export default function ReservarHorarioScreen() {
   const router = useRouter();
   const { showToast, hideToast } = useAppToast();
+  const { confirm } = useAppDialog();
   const params = useLocalSearchParams<{
     academiasId?: string;
     atividadesId?: string;
@@ -97,7 +103,6 @@ export default function ReservarHorarioScreen() {
   const [usuarioSelectionError, setUsuarioSelectionError] = useState<string | null>(null);
   const clubUsersCacheRef = useRef(createClubUsersCache());
   const isReservingRef = useRef(false);
-  const [sucessoContinuarVisible, setSucessoContinuarVisible] = useState(false);
   const [responseModal, setResponseModal] = useState<{ title: string; message: string } | null>(
     null,
   );
@@ -128,7 +133,9 @@ export default function ReservarHorarioScreen() {
     loadError,
     emptyMessage,
     isReady,
+    padrao,
     usaMensalPorSemana,
+    horariosSemanal,
     semanaOptions,
     selectedSemana,
     showSemanaSelector,
@@ -138,6 +145,7 @@ export default function ReservarHorarioScreen() {
     refetchOnFocus,
     handleLiberacaoReached,
     confirmarReserva,
+    confirmarReservaSemanal,
     selectSemana,
     selectUnidade,
     clearSelectedSemana,
@@ -216,14 +224,67 @@ export default function ReservarHorarioScreen() {
     navigateToHome(router);
   }
 
-  function handleEncerrarAposSucesso() {
-    setSucessoContinuarVisible(false);
-    clearSelectedSemana();
-  }
+  async function executarReserva(
+    reservar: () => Promise<{ response: CriarReservaResponse; podeReservarMais: boolean }>,
+  ) {
+    if (!user || !authToken || !responsavelActor || isReserving || isReservingRef.current) {
+      return;
+    }
 
-  function handleAvancarAposSucesso() {
-    // Continua na semana/mapa atual para nova reserva.
-    setSucessoContinuarVisible(false);
+    isReservingRef.current = true;
+    setIsReserving(true);
+    showToast(RESERVAR_HORARIO_MESSAGES.processing, {
+      variant: 'info',
+      duration: 120_000,
+    });
+
+    let reservationSucceeded = false;
+
+    try {
+      const { response, podeReservarMais } = await reservar();
+
+      const outcome = resolveReservaOutcome(response);
+
+      if (outcome.sucesso === CRIAR_RESERVA_RESULTADO.sucesso) {
+        reservationSucceeded = true;
+        hideToast();
+
+        if (!podeReservarMais) {
+          clearSelectedSemana();
+        }
+
+        showToast(RESERVAR_HORARIO_MESSAGES.success, {
+          variant: 'success',
+          placement: 'center',
+          duration: 2_500,
+        });
+
+        return;
+      }
+
+      if (outcome.showModal) {
+        setResponseModal({
+          title: getCriarReservaModalTitle(outcome.sucesso),
+          message: outcome.message,
+        });
+      }
+
+      if (outcome.refreshMapa) {
+        await fetchHorarios({ refreshing: true });
+      }
+    } catch (error) {
+      setResponseModal({
+        title: getCriarReservaModalTitle(null),
+        message: resolveReservaErrorMessage(error),
+      });
+    } finally {
+      isReservingRef.current = false;
+      setIsReserving(false);
+
+      if (!reservationSucceeded) {
+        hideToast();
+      }
+    }
   }
 
   async function handleSelectHorario(item: MapaDiarioFuturoItem) {
@@ -251,61 +312,66 @@ export default function ReservarHorarioScreen() {
       return;
     }
 
-    isReservingRef.current = true;
-    setIsReserving(true);
-    showToast(RESERVAR_HORARIO_MESSAGES.processing, {
-      variant: 'info',
-      duration: 120_000,
-    });
+    if (padrao === 'Diaria') {
+      isReservingRef.current = true;
 
-    let reservationSucceeded = false;
+      try {
+        const accepted = await confirm({
+          title: 'Confirmar reserva',
+          message: `Reservar ${atividadeNome} em ${formatMapaDiarioFuturoDataLabel(item.dataAtividade)}?`,
+          confirmLabel: 'Reservar',
+          cancelLabel: 'Voltar',
+        });
 
-    try {
-      const { response, podeReservarMais } = await confirmarReserva(
-        item,
-        targetUsersId,
-        responsavelActor,
-      );
-
-      const outcome = resolveReservaOutcome(response);
-
-      if (outcome.sucesso === CRIAR_RESERVA_RESULTADO.sucesso) {
-        reservationSucceeded = true;
-        hideToast();
-
-        if (podeReservarMais) {
-          setSucessoContinuarVisible(true);
+        if (!accepted) {
           return;
         }
-
-        showToast(outcome.message || RESERVAR_HORARIO_MESSAGES.success, { variant: 'success' });
-        clearSelectedSemana();
-        return;
-      }
-
-      if (outcome.showModal) {
-        setResponseModal({
-          title: getCriarReservaModalTitle(outcome.sucesso),
-          message: outcome.message,
-        });
-      }
-
-      if (outcome.refreshMapa) {
-        await fetchHorarios({ refreshing: true });
-      }
-    } catch (error) {
-      setResponseModal({
-        title: getCriarReservaModalTitle(null),
-        message: resolveReservaErrorMessage(error),
-      });
-    } finally {
-      isReservingRef.current = false;
-      setIsReserving(false);
-
-      if (!reservationSucceeded) {
-        hideToast();
+      } finally {
+        isReservingRef.current = false;
       }
     }
+
+    await executarReserva(() => confirmarReserva(item, targetUsersId, responsavelActor));
+  }
+
+  async function handleSelectHorarioSemanal(item: MapaSemanalItem) {
+    if (!user || !authToken || isReserving || isReservingRef.current) {
+      return;
+    }
+
+    if (!item.disponivel || item.capacidade <= 0) {
+      setResponseModal({
+        title: getCriarReservaModalTitle(null),
+        message: CAPACIDADE_ESGOTADA_MESSAGE,
+      });
+      void fetchHorarios({ refreshing: true });
+      return;
+    }
+
+    if (isGestorReserva && !selectedUsuario) {
+      setUsuarioSelectionError(RESERVAR_HORARIO_MESSAGES.selectUsuarioRequired);
+      return;
+    }
+
+    const targetUsersId = isGestorReserva ? selectedUsuario!.users_id : user.id;
+    isReservingRef.current = true;
+
+    try {
+      const accepted = await confirm({
+        title: 'Confirmar reserva',
+        message: `Reservar ${atividadeNome} ${formatDiaSemanaLabel(item.diaSemana)} às ${formatHoraMinutos(item.hora, item.minutos)}?`,
+        confirmLabel: 'Reservar',
+        cancelLabel: 'Voltar',
+      });
+
+      if (!accepted) {
+        return;
+      }
+    } finally {
+      isReservingRef.current = false;
+    }
+
+    await executarReserva(() => confirmarReservaSemanal(item, targetUsersId));
   }
 
   if (isAuthLoading || isContextLoading || !user) {
@@ -393,12 +459,20 @@ export default function ReservarHorarioScreen() {
             />
           </>
         ) : (
-          <MapaDiarioFuturoList
-            atividadeNome={atividadeNome}
-            horarios={items}
-            isBusy={isReserving || !canSelectHorario}
-            onSelectHorario={(item) => void handleSelectHorario(item)}
-          />
+          <>
+            <MapaDiarioUnidadeTabs
+              tabs={unidadeTabs}
+              selectedId={selectedUnidadeId}
+              onSelect={selectUnidade}
+              disabled={isReserving}
+            />
+            <MapaDiarioFuturoList
+              atividadeNome={atividadeNome}
+              horarios={items}
+              isBusy={isReserving || !canSelectHorario}
+              onSelectHorario={(item) => void handleSelectHorario(item)}
+            />
+          </>
         )}
       </>
     );
@@ -425,6 +499,46 @@ export default function ReservarHorarioScreen() {
             <Text style={styles.retryText}>Tentar novamente</Text>
           </Pressable>
         </View>
+      );
+    }
+
+    if (padrao === 'Semanal') {
+      if (horariosSemanal.length === 0) {
+        return (
+          <>
+            <View style={styles.centerContent}>
+              <Text style={styles.emptyText}>{emptyMessage}</Text>
+            </View>
+            {renderVoltarButton()}
+          </>
+        );
+      }
+
+      return (
+        <>
+          <Text style={styles.mensalActivityName}>{atividadeNome}</Text>
+          <Text style={styles.mensalInstruction}>Clique na data para reservar</Text>
+          <MapaDiarioUnidadeTabs
+            tabs={unidadeTabs}
+            selectedId={selectedUnidadeId}
+            onSelect={selectUnidade}
+            disabled={isReserving}
+          />
+          <View style={styles.mensalActionsRow}>
+            <Pressable
+              style={styles.mensalActionButton}
+              onPress={() => navigateToHome(router)}
+              disabled={isReserving}>
+              <Text style={styles.mensalActionText}>Voltar</Text>
+            </Pressable>
+            <View style={styles.mensalActionButton} />
+          </View>
+          <MapaSemanalGrid
+            horarios={horariosSemanal}
+            isBusy={isReserving || !canSelectHorario}
+            onSelectHorario={(item) => void handleSelectHorarioSemanal(item)}
+          />
+        </>
       );
     }
 
@@ -521,12 +635,6 @@ export default function ReservarHorarioScreen() {
           title={responseModal?.title ?? getCriarReservaModalTitle(null)}
           message={responseModal?.message ?? ''}
           onClose={handleCloseResponseModal}
-        />
-
-        <ReservaSucessoContinuarModal
-          visible={sucessoContinuarVisible}
-          onAvancar={handleAvancarAposSucesso}
-          onEncerrar={handleEncerrarAposSucesso}
         />
 
         {isReserving ? <View style={styles.blockingOverlay} pointerEvents="auto" /> : null}

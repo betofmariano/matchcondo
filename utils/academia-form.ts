@@ -77,7 +77,7 @@ export function buildUpdateAcademiaPayload(
     nome: values.nome.trim(),
     logoUrl: originalAcademia?.logoUrl ?? values.logoUrl.trim(),
     tituloSocio: values.tituloSocio,
-    AssociacaoExigida: values.associacaoExigida,
+    associacaoExigida: values.associacaoExigida,
     temRegulamento: values.temRegulamento,
     ativo: values.ativo,
     complemento: values.complemento,

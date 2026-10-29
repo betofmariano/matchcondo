@@ -1,3 +1,5 @@
+import type { ReservaProgramacao } from '@/types/reserva-usuario';
+
 export type ReservaParticipanteSummary = {
   users_id: number;
   nome: string;
@@ -9,6 +11,11 @@ export type ReservaSummary = {
   reservasdamha_id: number;
   mapadiariodamha_id: number;
   mapadiario_id: number;
+  mapasemanal_id: number;
+  programacao: ReservaProgramacao;
+  diaSemana: number | null;
+  hora: number | null;
+  minutos: number | null;
   dataAtividade: number;
   quadra: number;
   academias_id: number;

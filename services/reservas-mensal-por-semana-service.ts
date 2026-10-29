@@ -1,6 +1,5 @@
 import {
   API_ENDPOINTS,
-  buildCancelarReservaMensalPorSemanaPath,
   buildMapaMensalPorSemanaItemPath,
   buildReservasMensalPorSemanaItemPath,
   buildReservasMensalPorSemanaListPath,
@@ -74,18 +73,6 @@ export async function getReservasMensalPorSemanaByAcademia(
   );
 
   return normalizeReservasUsuarioListFromApi(data);
-}
-
-export async function excluirReservaMensalPorSemana(
-  reservasMensalPorSemanaId: number,
-  authToken: string,
-  payload: { numeroCancelamento: number } = { numeroCancelamento: 1 },
-): Promise<unknown> {
-  return authPatchRequest(
-    buildCancelarReservaMensalPorSemanaPath(reservasMensalPorSemanaId, payload.numeroCancelamento),
-    authToken,
-    {},
-  );
 }
 
 export type CancelarReservaMensalPorSemanaInput = ReservaMensalPorSemanaCancelamentoKey & {
@@ -210,8 +197,6 @@ export async function cancelarReservaMensalPorSemana(
     : [...reservas, cancelKey];
   let numeroAtual = resolveNextNumeroCancelamento(cancelKey, historico);
 
-  // O endpoint /cancelarReservaMensalPorSemana faz ADD de uma cópia. Incrementar o
-  // registro atual e depois chamar esse ADD gera a mesma chave única outra vez.
   for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
       await persistCancelamentoNoRegistro(

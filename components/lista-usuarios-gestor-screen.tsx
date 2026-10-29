@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 
 import { AdminTableScrollContainer } from '@/components/admin-table-scroll-container';
 import { ExcluirCadastroModal } from '@/components/excluir-cadastro-modal';
+import { GestorAcademiaSelectorField } from '@/components/gestor-academia-selector-field';
 import { GestorUsuarioListItemRow } from '@/components/gestor-usuario-list-item';
 import { GestorUsuarioStatusFilter } from '@/components/gestor-usuario-status-filter';
 import { ScreenHeader, ScreenHeaderDivider } from '@/components/screen-header';
@@ -23,6 +24,7 @@ import { WEB_MAX_CONTENT_WIDTH, WEB_MAX_WIDE_CONTENT_WIDTH } from '@/constants/w
 import { useAppToast } from '@/contexts/app-toast-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useUserContext } from '@/contexts/user-context';
+import { useGestorAcademiaScope } from '@/hooks/use-gestor-academia-scope';
 import {
   LISTA_USUARIOS_GESTOR_MESSAGES,
   useListaUsuariosGestorScreen,
@@ -72,12 +74,22 @@ export function ListaUsuariosGestorScreen() {
   } = useUserContext();
 
   const canAccess = permissions.gestor || permissions.administrador;
-  const academiasId = currentAcademia?.id ?? null;
 
   const handleUnauthorized = useCallback(async () => {
     await signOut();
     router.replace('/login');
   }, [router, signOut]);
+
+  const academiaScope = useGestorAcademiaScope({
+    user,
+    authToken,
+    isAuthLoading,
+    onUnauthorized: handleUnauthorized,
+  });
+
+  const academiasId = academiaScope.isAdministrador
+    ? (academiaScope.selectedAcademiaId ?? currentAcademia?.id ?? null)
+    : (currentAcademia?.id ?? academiaScope.academiasId);
 
   const [moradorParaBloquear, setMoradorParaBloquear] = useState<GestorUsuarioListItem | null>(null);
   const [blockError, setBlockError] = useState<string | null>(null);
@@ -123,6 +135,25 @@ export function ListaUsuariosGestorScreen() {
     isContextLoading,
     onUnauthorized: handleUnauthorized,
   });
+
+  const previousAcademiasIdRef = useRef(academiasId);
+
+  useEffect(() => {
+    const previousAcademiasId = previousAcademiasIdRef.current;
+    previousAcademiasIdRef.current = academiasId;
+
+    if (previousAcademiasId == null || academiasId == null || previousAcademiasId === academiasId) {
+      return;
+    }
+
+    setSearchQuery('');
+    setStatusFilter('todos');
+    setPendingAction(null);
+    setActionError(null);
+    setMoradorParaBloquear(null);
+    setBlockError(null);
+    setUsuarioContato(null);
+  }, [academiasId, setSearchQuery, setStatusFilter]);
 
   useEffect(() => {
     if (isAuthLoading || isContextLoading || !user) {
@@ -296,6 +327,18 @@ export function ListaUsuariosGestorScreen() {
       );
     }
 
+    if (academiasId == null) {
+      return (
+        <View style={styles.centerContent}>
+          {academiaScope.isLoadingAcademias ? (
+            <ActivityIndicator size="large" color={COLORS.blue} />
+          ) : (
+            <Text style={styles.emptyText}>{LISTA_USUARIOS_GESTOR_MESSAGES.selectLocal}</Text>
+          )}
+        </View>
+      );
+    }
+
     if (isLoading && !isRefreshing) {
       return (
         <View style={styles.centerContent}>
@@ -367,12 +410,21 @@ export function ListaUsuariosGestorScreen() {
         <ScreenHeaderDivider />
 
         <View style={styles.toolbar}>
-          {currentAcademia?.nome ? (
-            <View style={styles.readonlyLocalField}>
-              <Text style={styles.readonlyLocalLabel}>Local</Text>
-              <Text style={styles.readonlyLocalValue}>{currentAcademia.nome}</Text>
-            </View>
-          ) : null}
+          <GestorAcademiaSelectorField
+            showAcademiaSelector={academiaScope.isAdministrador}
+            availableAcademias={academiaScope.availableAcademias}
+            selectedAcademiaId={academiasId}
+            onChange={academiaScope.setSelectedAcademiaId}
+            isLoading={academiaScope.isLoadingAcademias}
+            error={academiaScope.academiasLoadError}
+            onRetry={() => void academiaScope.fetchAvailableAcademias()}
+            disabled={isActionRunning || !canAccess}
+            localNome={academiaScope.localNome ?? currentAcademia?.nome ?? null}
+            label="Local"
+            placeholder="Selecione o condomínio"
+            modalTitle="Selecione o condomínio"
+            compact
+          />
 
           <GestorUsuarioStatusFilter
             value={statusFilter}
@@ -474,19 +526,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     borderBottomWidth: 1,
     borderBottomColor: '#ECECEC',
-  },
-  readonlyLocalField: {
-    gap: 6,
-  },
-  readonlyLocalLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.muted,
-  },
-  readonlyLocalValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.navy,
   },
   countText: {
     fontSize: 15,

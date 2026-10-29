@@ -4,6 +4,14 @@ import {
   criarReservaMensalPorSemana,
   getReservasUsuarioMensalPorSemana,
 } from '@/services/reservas-mensal-por-semana-service';
+import {
+  cancelarReservaDiaria,
+  getReservasDiariasDoUsuario,
+} from '@/services/reservas-diarias-service';
+import {
+  cancelarReservaSemanal,
+  getReservasSemanaisDoUsuario,
+} from '@/services/reservas-semanais-service';
 import { getMapaMensalPorSemana } from '@/services/mapa-mensal-por-semana-service';
 import type { ReservaSummary } from '@/types/home-summary';
 import type { User } from '@/types/user';
@@ -111,7 +119,12 @@ export async function getReservasUsuarioForUser(
   academiasId: number,
   _options?: { usaMensalPorSemana?: boolean },
 ): Promise<ReservasUsuarioResponse> {
-  const reservas = await getReservasUsuarioMensalPorSemana(userId, authToken);
+  const [mensais, diarias, semanais] = await Promise.all([
+    getReservasUsuarioMensalPorSemana(userId, authToken),
+    getReservasDiariasDoUsuario(userId, authToken),
+    getReservasSemanaisDoUsuario(userId, authToken),
+  ]);
+  const reservas = [...mensais, ...diarias, ...semanais];
 
   if (academiasId <= 0) {
     return reservas;
@@ -173,6 +186,8 @@ export async function cancelarReservaForUser(
     | 'atividades_id'
     | 'dataAtividade'
     | 'mapadiario_id'
+    | 'mapasemanal_id'
+    | 'programacao'
     | 'semana'
     | 'atividade'
     | 'atividadeunidade_id'
@@ -182,6 +197,20 @@ export async function cancelarReservaForUser(
   _user: Pick<User, 'id' | 'nome'>,
   authToken: string,
 ): Promise<unknown> {
+  if (reserva.programacao === 'diaria') {
+    return cancelarReservaDiaria(
+      { id: reserva.id, mapadiario_id: reserva.mapadiario_id },
+      authToken,
+    );
+  }
+
+  if (reserva.programacao === 'semanal') {
+    return cancelarReservaSemanal(
+      { id: reserva.id, mapasemanal_id: reserva.mapasemanal_id },
+      authToken,
+    );
+  }
+
   const reservasMensalPorSemanaId = resolveReservasMensalPorSemanaCancelId(reserva) ?? (
     reserva.id > 0 ? reserva.id : null
   );

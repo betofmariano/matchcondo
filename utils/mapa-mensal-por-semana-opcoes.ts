@@ -208,7 +208,10 @@ export function enrichReservasMensalPorSemanaComSemana(
     const mapaItem =
       (reserva.mapadiariodamha_id > 0 ? mapaById.get(reserva.mapadiariodamha_id) : undefined) ??
       (dataAtividade > 0
-        ? mapaByDataAtividade.get(`${academias_id}:${dataAtividade}`)
+        ? mapaByDataAtividade.get(`${academias_id}:${dataAtividade}`) ??
+          (academias_id <= 0
+            ? mapaItems.find((item) => item.dataAtividade === dataAtividade)
+            : undefined)
         : undefined);
 
     if (mapaItem) {
@@ -251,12 +254,23 @@ export function enrichReservasMensalPorSemanaComSemana(
   });
 }
 
+function isSameCalendarMonth(left: number, right: number): boolean {
+  const leftDate = new Date(left);
+  const rightDate = new Date(right);
+
+  return (
+    leftDate.getFullYear() === rightDate.getFullYear() &&
+    leftDate.getMonth() === rightDate.getMonth()
+  );
+}
+
 export function countReservasMensalPorSemanaValidasNoPeriodo(
   reservas: ReservaUsuario[],
   academiasId: number,
   periodo: { inicio: number; fim: number },
   /** Limite semanal é por atividade; sem id, conta todas (legado). */
   atividadesId?: number | null,
+  semana?: number | null,
 ): number {
   const seen = new Set<number>();
   let count = 0;
@@ -266,20 +280,36 @@ export function countReservasMensalPorSemanaValidasNoPeriodo(
       continue;
     }
 
-    if (reserva.academias_id !== academiasId) {
+    if (
+      reserva.academias_id > 0 &&
+      academiasId > 0 &&
+      reserva.academias_id !== academiasId
+    ) {
       continue;
     }
 
-    // Limite é por atividade: só conta reserva da mesma atividades_id.
-    if (atividadesId != null && atividadesId > 0 && reserva.atividades_id !== atividadesId) {
+    // Limite é por atividade. Reserva sem atividades_id ainda conta, para não liberar a semana.
+    if (
+      atividadesId != null &&
+      atividadesId > 0 &&
+      reserva.atividades_id > 0 &&
+      reserva.atividades_id !== atividadesId
+    ) {
       continue;
     }
 
-    if (reserva.dataAtividade <= 0) {
-      continue;
-    }
+    const noPeriodo =
+      reserva.dataAtividade > 0 &&
+      reserva.dataAtividade >= periodo.inicio &&
+      reserva.dataAtividade <= periodo.fim;
+    const mesmaSemanaDoMes =
+      semana != null &&
+      semana > 0 &&
+      reserva.semana === semana &&
+      reserva.dataAtividade > 0 &&
+      isSameCalendarMonth(reserva.dataAtividade, periodo.inicio);
 
-    if (reserva.dataAtividade < periodo.inicio || reserva.dataAtividade > periodo.fim) {
+    if (!noPeriodo && !mesmaSemanaDoMes) {
       continue;
     }
 
@@ -309,7 +339,13 @@ export function countReservasMensalPorSemanaAtivasPorSemana(
     return 0;
   }
 
-  return countReservasMensalPorSemanaValidasNoPeriodo(reservas, academiasId, periodo, atividadesId);
+  return countReservasMensalPorSemanaValidasNoPeriodo(
+    reservas,
+    academiasId,
+    periodo,
+    atividadesId,
+    semana,
+  );
 }
 
 export function enrichMapaMensalPorSemanaSemanaOptions(
@@ -323,7 +359,13 @@ export function enrichMapaMensalPorSemanaSemanaOptions(
     const periodo = buildMensalPorSemanaCalendarRange(option.semana, option.primeiraDataAtividade);
     const reservasNaSemana =
       periodo != null
-        ? countReservasMensalPorSemanaValidasNoPeriodo(reservas, academiasId, periodo, atividadesId)
+        ? countReservasMensalPorSemanaValidasNoPeriodo(
+            reservas,
+            academiasId,
+            periodo,
+            atividadesId,
+            option.semana,
+          )
         : 0;
     return {
       ...option,
@@ -408,6 +450,7 @@ export function isSemanaMensalPorSemanaLimiteAtingido(
     academiasId,
     periodo,
     atividadesId,
+    semana,
   );
 
   return reservasNaSemana >= limiteReservasPorSemana;

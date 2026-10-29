@@ -1,5 +1,7 @@
 import type { JogoJogador } from '@/types/jogo';
 
+export type ReservaProgramacao = 'diaria' | 'semanal' | 'mensalPorSemana';
+
 export type ReservaUsuario = {
   id: number;
   dataAtividade: number;
@@ -10,6 +12,11 @@ export type ReservaUsuario = {
   mapadiariodamha_id: number;
   reservasdamha_id: number;
   mapadiario_id: number;
+  mapasemanal_id: number;
+  programacao: ReservaProgramacao;
+  diaSemana: number | null;
+  hora: number | null;
+  minutos: number | null;
   atividadeunidade_id: number | null;
   unidadeNome: string | null;
   atividade: string | null;

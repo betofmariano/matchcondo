@@ -178,8 +178,8 @@ export function useCadastroAtividadesScreen({
     try {
       await createAtividade(
         {
-          academias_id: clubSelection.selectedClubId,
-          atividade,
+          nome: atividade,
+          condominio_id: clubSelection.selectedClubId,
         },
         authToken,
       );

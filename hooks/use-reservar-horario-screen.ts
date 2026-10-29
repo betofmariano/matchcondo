@@ -4,19 +4,25 @@ import { ApiError, getApiErrorMessage } from '@/services/api-client';
 import { getAtividadeById } from '@/services/atividades-service';
 import { getAtividadeUnidadesByAtividade } from '@/services/atividade-unidade-service';
 import { getHorariosByAcademia } from '@/services/horarios-service';
+import { getMapaDiarioReserva } from '@/services/mapa-diario-reserva-service';
+import { getMapaSemanal } from '@/services/mapa-semanal-service';
 import {
   carregarMapaReservaHorario,
   confirmarReservaHorario,
   resolveAcademiaForReserva,
 } from '@/services/reserva-horario-flow-service';
+import { criarReservaDiaria, getReservasDiariasDoUsuario } from '@/services/reservas-diarias-service';
 import { getReservasMensalPorSemanaLimiteSemanalUsuario } from '@/services/reservas-mensal-por-semana-service';
+import { criarReservaSemanal, getReservasSemanaisDoUsuario } from '@/services/reservas-semanais-service';
 import type { Academia } from '@/types/academia';
 import type { Atividade } from '@/types/atividade';
 import type { AtividadeUnidade } from '@/types/atividade-unidade';
 import type { MapaDiarioFuturoItem } from '@/types/mapa-diario-futuro';
+import type { MapaSemanalItem } from '@/types/mapa-semanal';
 import type { CriarReservaResponse, ReservaResponsavelActor } from '@/types/reserva';
 import type { ReservaUsuario } from '@/types/reserva-usuario';
 import {
+  resolveAtividadePadrao,
   resolveLimiteReservasSemana,
   resolveUsaMensalPorSemana,
 } from '@/utils/atividade-programacao';
@@ -42,9 +48,15 @@ import {
   sortMapaDiarioFuturoAsc,
   type MapaDiarioFuturoFilters,
 } from '@/utils/mapa-diario-futuro';
+import {
+  isLimiteReservasDiariasNaSemanaAtingido,
+  isLimiteReservasSemanaisAtingido,
+} from '@/utils/reserva-modalidade-limite';
 import { getServerDate, getServerNow } from '@/utils/server-time';
 
 const LOAD_ERROR = 'Não foi possível carregar os horários disponíveis.';
+const LIMITE_SEMANA_MESSAGE = 'Você já atingiu o limite de reservas para esta semana.';
+const LIMITE_SEMANAL_MESSAGE = 'Você já atingiu o limite de reservas semanais desta atividade.';
 const EMPTY_MESSAGE = 'Não há horários liberados para reserva nesta atividade.';
 const EMPTY_SEMANA_MESSAGE = 'Não há semanas disponíveis para reserva nesta atividade.';
 const LIBERACAO_REFRESH_DELAY_MS = 100;
@@ -75,6 +87,7 @@ export function useReservarHorarioScreen({
   onUnauthorized,
 }: UseReservarHorarioScreenParams) {
   const [allHorarios, setAllHorarios] = useState<MapaDiarioFuturoItem[]>([]);
+  const [horariosSemanal, setHorariosSemanal] = useState<MapaSemanalItem[]>([]);
   const [reservasMensalPorSemana, setReservasMensalPorSemana] = useState<ReservaUsuario[]>([]);
   const [academia, setAcademia] = useState<Academia | null>(null);
   const [atividade, setAtividade] = useState<Atividade | null>(null);
@@ -82,8 +95,6 @@ export function useReservarHorarioScreen({
   const [selectedUnidadeId, setSelectedUnidadeId] = useState<number | null>(null);
   const [selectedSemana, setSelectedSemana] = useState<number | null>(null);
   const [referenceDate, setReferenceDate] = useState(() => getServerDate());
-  const [apiProximaLiberacao, setApiProximaLiberacao] = useState<number | null>(null);
-  const [hasApiProximaLiberacao, setHasApiProximaLiberacao] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -93,13 +104,16 @@ export function useReservarHorarioScreen({
   const atividadeRef = useRef<Atividade | null>(null);
   const reservasMensalPorSemanaRef = useRef<ReservaUsuario[]>([]);
   const allHorariosRef = useRef<MapaDiarioFuturoItem[]>([]);
+  const horariosSemanalRef = useRef<MapaSemanalItem[]>([]);
 
   reservasMensalPorSemanaRef.current = reservasMensalPorSemana;
   allHorariosRef.current = allHorarios;
+  horariosSemanalRef.current = horariosSemanal;
 
   const isReady = academiasId != null && atividadesId != null;
 
   const limiteSemanalUserId = reservationTargetUserId ?? userId;
+  const padrao = resolveAtividadePadrao(atividade?.tipoProgramacao);
   const usaMensalPorSemana = resolveUsaMensalPorSemana({ atividade });
   const limiteReservasSemana = resolveLimiteReservasSemana({ atividade });
 
@@ -156,6 +170,10 @@ export function useReservarHorarioScreen({
   ]);
 
   const horariosDaSemana = useMemo(() => {
+    if (padrao === 'Diaria') {
+      return sortMapaDiarioFuturoAsc(horariosExibiveis);
+    }
+
     if (!usaMensalPorSemana) {
       return horariosReservaveis;
     }
@@ -167,7 +185,7 @@ export function useReservarHorarioScreen({
     return sortMapaDiarioFuturoAsc(
       filterMapaDiarioFuturoBySemana(horariosExibiveis, selectedSemana),
     );
-  }, [horariosExibiveis, horariosReservaveis, selectedSemana, usaMensalPorSemana]);
+  }, [horariosExibiveis, horariosReservaveis, padrao, selectedSemana, usaMensalPorSemana]);
 
   const unidadesById = useMemo(() => {
     const map = new Map<number, AtividadeUnidade>();
@@ -180,22 +198,58 @@ export function useReservarHorarioScreen({
   }, [atividadeUnidades]);
 
   const unidadeTabs = useMemo<MapaAtividadeUnidadeTab[]>(() => {
-    if (!usaMensalPorSemana) {
-      return [];
+    if (padrao === 'Semanal') {
+      return buildMapaAtividadeUnidadeTabs(horariosSemanal, unidadesById);
+    }
+
+    if (padrao === 'Diaria') {
+      return buildMapaAtividadeUnidadeTabs(horariosExibiveis, unidadesById);
     }
 
     const source = selectedSemana != null ? horariosDaSemana : allHorarios;
 
     return buildMapaAtividadeUnidadeTabs(source, unidadesById);
-  }, [allHorarios, horariosDaSemana, selectedSemana, unidadesById, usaMensalPorSemana]);
+  }, [
+    allHorarios,
+    horariosDaSemana,
+    horariosExibiveis,
+    horariosSemanal,
+    padrao,
+    selectedSemana,
+    unidadesById,
+  ]);
 
   const horarios = useMemo(() => {
-    if (!usaMensalPorSemana || unidadeTabs.length === 0) {
+    if (unidadeTabs.length === 0) {
+      return horariosDaSemana;
+    }
+
+    if (padrao === 'Semanal') {
       return horariosDaSemana;
     }
 
     return filterMapaDiarioByAtividadeUnidade(horariosDaSemana, selectedUnidadeId);
-  }, [horariosDaSemana, selectedUnidadeId, unidadeTabs.length, usaMensalPorSemana]);
+  }, [horariosDaSemana, padrao, selectedUnidadeId, unidadeTabs.length]);
+
+  const horariosSemanalVisiveis = useMemo(() => {
+    const ordenados = [...horariosSemanal].sort((a, b) => {
+      if (a.diaSemana !== b.diaSemana) {
+        return a.diaSemana - b.diaSemana;
+      }
+
+      if (a.hora !== b.hora) {
+        return a.hora - b.hora;
+      }
+
+      return a.minutos - b.minutos;
+    });
+
+    if (unidadeTabs.length === 0 || selectedUnidadeId == null) {
+      return ordenados;
+    }
+
+    return ordenados.filter((item) => item.atividadeunidade_id === selectedUnidadeId);
+  }, [horariosSemanal, selectedUnidadeId, unidadeTabs.length]);
 
   const proximaLiberacaoFromMapa = useMemo(() => {
     if (!filters) {
@@ -213,19 +267,17 @@ export function useReservarHorarioScreen({
     );
   }, [allHorarios, filters, referenceDate, selectedSemana, usaMensalPorSemana]);
 
-  const proximaLiberacao =
-    hasApiProximaLiberacao && apiProximaLiberacao != null
-      ? apiProximaLiberacao
-      : proximaLiberacaoFromMapa;
+  const proximaLiberacao = proximaLiberacaoFromMapa;
 
   /** Sem horário liberado: não mostra semanas; countdown quando houver dataLiberacao futura. */
-  const isAguardandoLiberacao = !temHorarioLiberado;
+  const isAguardandoLiberacao = padrao !== 'Semanal' && !temHorarioLiberado;
 
   const fetchHorarios = useCallback(
     async (options?: FetchHorariosOptions) => {
       if (!authToken || !filters) {
         if (!options?.silent) {
           setAllHorarios([]);
+          setHorariosSemanal([]);
           setReservasMensalPorSemana([]);
           setAcademia(null);
           setAtividade(null);
@@ -234,8 +286,6 @@ export function useReservarHorarioScreen({
           academiaRef.current = null;
           atividadeRef.current = null;
           setSelectedSemana(null);
-          setApiProximaLiberacao(null);
-          setHasApiProximaLiberacao(false);
           setLoadError(null);
           setIsLoading(false);
           setIsRefreshing(false);
@@ -266,7 +316,6 @@ export function useReservarHorarioScreen({
 
       if (!isSilent) {
         setLoadError(null);
-        setHasApiProximaLiberacao(false);
       }
 
       try {
@@ -291,8 +340,7 @@ export function useReservarHorarioScreen({
 
         setReferenceDate(getServerDate());
 
-        const usaMensalPorSemana = true;
-        const flowOptions = { usaMensalPorSemana, userId: limiteSemanalUserId ?? undefined };
+        const padraoAtual = resolveAtividadePadrao(resolvedAtividade?.tipoProgramacao);
 
         let resolvedUnidades: AtividadeUnidade[] = [];
 
@@ -317,25 +365,49 @@ export function useReservarHorarioScreen({
           filters.atividades_id,
         ).catch(() => []);
 
-        const [data, reservas] = await Promise.all([
-          carregarMapaReservaHorario(authToken, filters, resolvedAcademia, flowOptions),
-          limiteSemanalUserId
-            ? getReservasMensalPorSemanaLimiteSemanalUsuario(
-                limiteSemanalUserId,
-                filters.academias_id,
-                authToken,
-              )
-            : Promise.resolve([]),
-        ]);
+        if (padraoAtual === 'Diaria') {
+          const data = await getMapaDiarioReserva(authToken, filters);
 
-        if (!isSilent && requestId !== requestIdRef.current) {
-          return;
+          if (!isSilent && requestId !== requestIdRef.current) {
+            return;
+          }
+
+          setAllHorarios(data);
+          setHorariosSemanal([]);
+          setReservasMensalPorSemana([]);
+        } else if (padraoAtual === 'Semanal') {
+          const data = await getMapaSemanal(authToken, filters);
+
+          if (!isSilent && requestId !== requestIdRef.current) {
+            return;
+          }
+
+          setHorariosSemanal(data);
+          setAllHorarios([]);
+          setReservasMensalPorSemana([]);
+        } else {
+          const [data, reservas] = await Promise.all([
+            carregarMapaReservaHorario(authToken, filters, resolvedAcademia, {
+              usaMensalPorSemana: true,
+              userId: limiteSemanalUserId ?? undefined,
+            }),
+            limiteSemanalUserId
+              ? getReservasMensalPorSemanaLimiteSemanalUsuario(
+                  limiteSemanalUserId,
+                  filters.academias_id,
+                  authToken,
+                )
+              : Promise.resolve([]),
+          ]);
+
+          if (!isSilent && requestId !== requestIdRef.current) {
+            return;
+          }
+
+          setAllHorarios(data);
+          setHorariosSemanal([]);
+          setReservasMensalPorSemana(reservas);
         }
-
-        setAllHorarios(data);
-        setReservasMensalPorSemana(reservas);
-        setApiProximaLiberacao(null);
-        setHasApiProximaLiberacao(false);
       } catch (error) {
         if (!isSilent && requestId !== requestIdRef.current) {
           return;
@@ -350,10 +422,9 @@ export function useReservarHorarioScreen({
           const message = getApiErrorMessage(error);
           setLoadError(message.includes('conectar') ? message : LOAD_ERROR);
           setAllHorarios([]);
+          setHorariosSemanal([]);
           setReservasMensalPorSemana([]);
           setSelectedSemana(null);
-          setApiProximaLiberacao(null);
-          setHasApiProximaLiberacao(false);
         }
       } finally {
         isFetchingRef.current = false;
@@ -400,12 +471,40 @@ export function useReservarHorarioScreen({
         throw new Error(CAPACIDADE_ESGOTADA_MESSAGE);
       }
 
-      const usaMensalPorSemana = resolveUsaMensalPorSemana({
-        atividade: atividadeRef.current,
-      });
+      const padraoAtual = resolveAtividadePadrao(atividadeRef.current?.tipoProgramacao);
+      const usaMensalPorSemana = padraoAtual === 'MensalPorSemana';
       const limiteSemana = resolveLimiteReservasSemana({
         atividade: atividadeRef.current,
       });
+
+      if (padraoAtual === 'Diaria') {
+        const atividadesId = filters?.atividades_id ?? item.atividades_id;
+        const reservasAtuais = await getReservasDiariasDoUsuario(usersId, authToken);
+
+        if (
+          isLimiteReservasDiariasNaSemanaAtingido(
+            item.dataAtividade,
+            reservasAtuais,
+            atividadesId,
+            limiteSemana,
+          )
+        ) {
+          throw new Error(LIMITE_SEMANA_MESSAGE);
+        }
+
+        const response = await criarReservaDiaria(item.id, authToken);
+        const reservasDepois = await getReservasDiariasDoUsuario(usersId, authToken);
+        const podeReservarMais = !isLimiteReservasDiariasNaSemanaAtingido(
+          item.dataAtividade,
+          reservasDepois,
+          atividadesId,
+          limiteSemana,
+        );
+
+        await fetchHorarios({ refreshing: true });
+
+        return { response, podeReservarMais };
+      }
 
       if (usaMensalPorSemana && filters && item.semana != null) {
         const reservasAtualizadas = await getReservasMensalPorSemanaLimiteSemanalUsuario(
@@ -428,7 +527,7 @@ export function useReservarHorarioScreen({
             filters.atividades_id,
           )
         ) {
-          throw new Error('O usuário selecionado já atingiu o limite de reservas para esta semana.');
+          throw new Error(LIMITE_SEMANA_MESSAGE);
         }
       }
 
@@ -472,8 +571,55 @@ export function useReservarHorarioScreen({
     [authToken, fetchHorarios, filters, referenceDate],
   );
 
+  const confirmarReservaSemanal = useCallback(
+    async (
+      item: MapaSemanalItem,
+      usersId: number,
+    ): Promise<{ response: CriarReservaResponse; podeReservarMais: boolean }> => {
+      if (!authToken) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+
+      if (!atividadeRef.current && filters?.atividades_id) {
+        atividadeRef.current = await getAtividadeById(filters.atividades_id, authToken);
+        setAtividade(atividadeRef.current);
+      }
+
+      if (!item?.id || item.id <= 0 || !usersId) {
+        throw new Error('Selecione um horário disponível para reservar.');
+      }
+
+      if (!item.disponivel || item.capacidade <= 0) {
+        throw new Error(CAPACIDADE_ESGOTADA_MESSAGE);
+      }
+
+      const limiteSemana = resolveLimiteReservasSemana({
+        atividade: atividadeRef.current,
+      });
+      const atividadesId = filters?.atividades_id ?? item.atividades_id;
+      const reservasAtuais = await getReservasSemanaisDoUsuario(usersId, authToken);
+
+      if (isLimiteReservasSemanaisAtingido(reservasAtuais, atividadesId, limiteSemana)) {
+        throw new Error(LIMITE_SEMANAL_MESSAGE);
+      }
+
+      const response = await criarReservaSemanal(item.id, authToken);
+      const reservasDepois = await getReservasSemanaisDoUsuario(usersId, authToken);
+      const podeReservarMais = !isLimiteReservasSemanaisAtingido(
+        reservasDepois,
+        atividadesId,
+        limiteSemana,
+      );
+
+      await fetchHorarios({ refreshing: true });
+
+      return { response, podeReservarMais };
+    },
+    [authToken, fetchHorarios, filters],
+  );
+
   const refetchOnFocus = useCallback(() => {
-    if (allHorariosRef.current.length > 0) {
+    if (allHorariosRef.current.length > 0 || horariosSemanalRef.current.length > 0) {
       void fetchHorarios({ silent: true, force: true });
       return;
     }
@@ -549,6 +695,18 @@ export function useReservarHorarioScreen({
 
     setSelectedSemana(semanasSelecionaveis[0].semana);
   }, [semanaOptions, selectedSemana, usaMensalPorSemana]);
+
+  useEffect(() => {
+    if (!usaMensalPorSemana || selectedSemana == null) {
+      return;
+    }
+
+    const semanaAtual = semanaOptions.find((option) => option.semana === selectedSemana);
+
+    if (semanaAtual && !semanaAtual.selecionavel) {
+      setSelectedSemana(null);
+    }
+  }, [selectedSemana, semanaOptions, usaMensalPorSemana]);
 
   useEffect(() => {
     if (proximaLiberacao == null) {
@@ -642,7 +800,9 @@ export function useReservarHorarioScreen({
     emptyMessage,
     isReady,
     academia,
+    padrao,
     usaMensalPorSemana,
+    horariosSemanal: horariosSemanalVisiveis,
     semanaOptions,
     selectedSemana,
     showSemanaSelector,
@@ -652,6 +812,7 @@ export function useReservarHorarioScreen({
     refetchOnFocus,
     handleLiberacaoReached,
     confirmarReserva,
+    confirmarReservaSemanal,
     selectSemana,
     selectUnidade,
     clearSelectedSemana,

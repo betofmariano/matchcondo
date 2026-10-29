@@ -233,6 +233,10 @@ export function filterActiveFutureReservas(
       return false;
     }
 
+    if (reserva.programacao === 'semanal') {
+      return true;
+    }
+
     if (!reserva.dataAtividade || reserva.dataAtividade < now) {
       return false;
     }

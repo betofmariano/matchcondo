@@ -310,6 +310,7 @@ export default function CadastroHorariosScreen() {
                 onToggleDia={handleToggleDia}
                 fieldErrors={fieldErrors}
                 atividadeSelectorDisabled={isAtividadeSelectorDisabled}
+                localSelectorDisabled={isSaving || isDeleting}
                 disabled={isScheduleFieldsDisabled}
               />
 

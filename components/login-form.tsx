@@ -7,12 +7,15 @@ import { OkMessageModal } from '@/components/ok-message-modal';
 import { PasswordTextField } from '@/components/password-text-field';
 import { PhoneTextField } from '@/components/phone-text-field';
 import { PendingRecoveryModal } from '@/components/pending-recovery-modal';
+import { PrivacyPolicyLink } from '@/components/privacy-policy-link';
 import { RecuperarSenhaModal } from '@/components/recuperar-senha-modal';
 import { WrongPasswordModal } from '@/components/wrong-password-modal';
 import { stripNonNumeric } from '@/constants/auth';
 import { useAuth } from '@/contexts/auth-context';
 import {
   LOGIN_TOTAL_ENCONTRADO_TITLES,
+  LOGIN_UNSTABLE_MESSAGE,
+  LOGIN_UNSTABLE_TITLE,
   LOGIN_WRONG_PASSWORD_MESSAGE,
   LOGIN_WRONG_PASSWORD_TITLE,
 } from '@/constants/login-messages';
@@ -21,6 +24,8 @@ import {
   getLoginValidationError,
 } from '@/utils/phone-validation';
 import { navigateToHome } from '@/utils/auth-navigation';
+import { markPasswordLoginInstallPrompt } from '@/utils/instalar-app-login-prompt';
+import { openWhatsAppSuporte, WHATSAPP_SUPORTE_OPEN_ERROR } from '@/utils/open-whatsapp-suporte';
 import { BRAZILIAN_MOBILE_PHONE_DIGITS } from '@/utils/phone-mask';
 import {
   clearPendingRecovery,
@@ -44,16 +49,22 @@ const LOGIN_ERROR_TITLES = {
   token_failed: 'Não foi possível entrar',
   blocked: 'Acesso bloqueado',
   not_approved: 'Cadastro pendente',
-  duplicate_phone: LOGIN_TOTAL_ENCONTRADO_TITLES.duplicatePhones,
   generic: 'Erro no login',
 } as const;
 
 const LOGIN_ERROR_TITLE = LOGIN_ERROR_TITLES.generic;
+const LOGIN_WRONG_PASSWORD_CONFIRM_ATTEMPTS = 2;
 
 type ErrorModalState = {
   title: string;
   message: string;
-  kind?: 'wrong_password' | 'generic';
+  kind?: 'wrong_password' | 'login_unstable' | 'generic';
+};
+
+type PasswordFailAttempt = {
+  phone: string;
+  password: string;
+  count: number;
 };
 
 export function LoginForm({ onSubmittingChange }: LoginFormProps) {
@@ -69,6 +80,11 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
   const [isPendingRecoveryPromptVisible, setIsPendingRecoveryPromptVisible] = useState(false);
   const [errorModal, setErrorModal] = useState<ErrorModalState | null>(null);
   const loginInFlightRef = useRef(false);
+  const passwordFailRef = useRef<PasswordFailAttempt>({
+    phone: '',
+    password: '',
+    count: 0,
+  });
 
   const refreshPendingRecovery = useCallback(async () => {
     const localPending = await getPendingRecovery();
@@ -103,7 +119,7 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
     setErrorModal(null);
   }
 
-  async function handleLogin() {
+  async function handleLogin(options?: { skipPhoneConfirm?: boolean }) {
     if (isSubmitting || loginInFlightRef.current) {
       return;
     }
@@ -118,10 +134,12 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
     loginInFlightRef.current = true;
 
     try {
-      const phoneConfirmed = await confirmPhoneSubmitChecks(phone);
+      if (!options?.skipPhoneConfirm) {
+        const phoneConfirmed = await confirmPhoneSubmitChecks(phone);
 
-      if (!phoneConfirmed) {
-        return;
+        if (!phoneConfirmed) {
+          return;
+        }
       }
 
       setIsSubmitting(true);
@@ -132,11 +150,24 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
       });
 
       if (result.success) {
-        navigateToHome(router);
+        passwordFailRef.current = { phone: '', password: '', count: 0 };
+        markPasswordLoginInstallPrompt();
+        navigateToHome(router, { loginSenha: '1' });
         return;
       }
 
       if (result.errorCode === 'wrong_password') {
+        const sameCredentials =
+          passwordFailRef.current.phone === phone &&
+          passwordFailRef.current.password === password;
+        const failCount = sameCredentials ? passwordFailRef.current.count + 1 : 1;
+        passwordFailRef.current = { phone, password, count: failCount };
+
+        if (failCount < LOGIN_WRONG_PASSWORD_CONFIRM_ATTEMPTS) {
+          showLoginError(LOGIN_UNSTABLE_MESSAGE, LOGIN_UNSTABLE_TITLE, 'login_unstable');
+          return;
+        }
+
         showLoginError(
           LOGIN_WRONG_PASSWORD_MESSAGE,
           LOGIN_WRONG_PASSWORD_TITLE,
@@ -154,6 +185,11 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
       setIsSubmitting(false);
       onSubmittingChange?.(false);
     }
+  }
+
+  function handleRetrySamePassword() {
+    closeErrorModal();
+    void handleLogin({ skipPhoneConfirm: true });
   }
 
   function handleForgotPassword() {
@@ -225,7 +261,26 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
     navigateToHome(router);
   }
 
-  const isWrongPasswordModal = errorModal?.kind === 'wrong_password';
+  async function handleWhatsAppSuporte() {
+    if (isSubmitting) {
+      return;
+    }
+
+    const opened = await openWhatsAppSuporte({
+      telefone: stripNonNumeric(phone) || null,
+    });
+
+    if (!opened) {
+      setErrorModal({
+        title: 'WhatsApp',
+        message: WHATSAPP_SUPORTE_OPEN_ERROR,
+      });
+    }
+  }
+
+  const isPasswordFailureModal =
+    errorModal?.kind === 'wrong_password' || errorModal?.kind === 'login_unstable';
+  const isUnstableLoginModal = errorModal?.kind === 'login_unstable';
 
   return (
     <View style={styles.form}>
@@ -239,12 +294,21 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
 
       <PasswordTextField
         label="Senha"
-        labelHint="* de 4 a 6 dígitos NUMÉRICOS"
+        labelHint={
+          password.length
+            ? `* ${password.length} de 4 a 6 dígitos NUMÉRICOS`
+            : '* de 4 a 6 dígitos NUMÉRICOS'
+        }
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(value) => setPassword(stripNonNumeric(value).slice(0, 6))}
         keyboardType="number-pad"
         maxLength={6}
         placeholder="••••••"
+        autoComplete="off"
+        textContentType="none"
+        importantForAutofill="no"
+        autoCorrect={false}
+        spellCheck={false}
         editable={!isSubmitting}
       />
 
@@ -258,10 +322,24 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
 
       <AuthButton
         label={isSubmitting ? 'Entrando...' : 'Entrar'}
-        onPress={handleLogin}
+        onPress={() => {
+          void handleLogin();
+        }}
         disabled={isSubmitting}
         style={styles.submitButton}
       />
+
+      <AuthButton
+        label="Ajuda no WhatsApp"
+        variant="actionLink"
+        onPress={() => {
+          void handleWhatsAppSuporte();
+        }}
+        disabled={isSubmitting}
+        style={styles.whatsappButton}
+      />
+
+      <PrivacyPolicyLink />
 
       {isSubmitting ? (
         <View style={styles.loadingRow}>
@@ -271,15 +349,23 @@ export function LoginForm({ onSubmittingChange }: LoginFormProps) {
       ) : null}
 
       <WrongPasswordModal
-        visible={isWrongPasswordModal}
-        title={errorModal?.title ?? LOGIN_WRONG_PASSWORD_TITLE}
-        message={errorModal?.message ?? LOGIN_WRONG_PASSWORD_MESSAGE}
-        onForgotPassword={handleForgotPasswordFromModal}
-        onClose={closeErrorModal}
+        visible={isPasswordFailureModal}
+        title={
+          errorModal?.title ??
+          (isUnstableLoginModal ? LOGIN_UNSTABLE_TITLE : LOGIN_WRONG_PASSWORD_TITLE)
+        }
+        message={
+          errorModal?.message ??
+          (isUnstableLoginModal ? LOGIN_UNSTABLE_MESSAGE : LOGIN_WRONG_PASSWORD_MESSAGE)
+        }
+        primaryLabel={isUnstableLoginModal ? 'Tentar novamente' : 'Esqueci minha senha'}
+        secondaryLabel={isUnstableLoginModal ? 'Esqueci minha senha' : 'Tentar novamente'}
+        onPrimary={isUnstableLoginModal ? handleRetrySamePassword : handleForgotPasswordFromModal}
+        onSecondary={isUnstableLoginModal ? handleForgotPasswordFromModal : closeErrorModal}
       />
 
       <OkMessageModal
-        visible={errorModal != null && !isWrongPasswordModal}
+        visible={errorModal != null && !isPasswordFailureModal}
         title={errorModal?.title ?? LOGIN_ERROR_TITLE}
         message={errorModal?.message ?? ''}
         onClose={closeErrorModal}
@@ -316,6 +402,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   submitButton: {
+    marginBottom: 8,
+  },
+  whatsappButton: {
     marginBottom: 16,
   },
   loadingRow: {

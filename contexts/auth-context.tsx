@@ -5,11 +5,9 @@ import {
   AUTH_TOKEN_KEY,
   normalizePhoneForApi,
 } from '@/constants/auth';
-import {
-  LOGIN_TOTAL_ENCONTRADO_MESSAGES,
-} from '@/constants/login-messages';
 import { ApiError, getApiErrorMessage } from '@/services/api-client';
-import { getMe, loginSafe, sendWzapCadastroDuplicado, signupFone } from '@/services/auth-service';
+import { getAcademias } from '@/services/academias-service';
+import { getMe, loginSafe, signupFone } from '@/services/auth-service';
 import {
   registerLogadoForAuthenticatedUser,
   resetLogadoRegistrationSession,
@@ -39,7 +37,6 @@ type SignInErrorCode =
   | 'token_failed'
   | 'blocked'
   | 'not_approved'
-  | 'duplicate_phone'
   | 'generic';
 
 type SignInResult = {
@@ -263,22 +260,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
 
-      const totalEncontrado = response.totalEncontrado;
-
-      if (typeof totalEncontrado === 'number' && totalEncontrado > 1) {
-        void sendWzapCadastroDuplicado(telefoneLimpo).catch(() => {
-          if (__DEV__) {
-            console.log('Não foi possível notificar cadastro duplicado via WhatsApp');
-          }
-        });
-
-        return {
-          success: false,
-          errorCode: 'duplicate_phone',
-          error: LOGIN_TOTAL_ENCONTRADO_MESSAGES.duplicatePhones(totalEncontrado),
-        };
-      }
-
       const parsed = parseLoginSafeResponse(response);
 
       if (parsed.status === 'error') {
@@ -338,7 +319,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [establishAuthSession, enrichSessionUserPhoto]);
 
   const signUp = useCallback(async (data: SignUpData, options?: SignUpOptions): Promise<SignUpResult> => {
-    const validationError = validateSignUpData(data);
+    let requiresMatricula = data.requiresMatricula;
+    let requiresComplemento = data.requiresComplemento;
+
+    if (data.academiasId != null) {
+      try {
+        const academias = await getAcademias();
+        const academia = academias.find((item) => item.id === data.academiasId);
+
+        if (academia) {
+          requiresMatricula = academia.tituloSocio === true;
+          requiresComplemento = academia.complemento === true;
+        }
+      } catch {
+        // Mantém as flags do formulário se a lista não recarregar.
+      }
+    }
+
+    const validationError = validateSignUpData({
+      ...data,
+      requiresMatricula,
+      requiresComplemento,
+    });
 
     if (validationError) {
       return { success: false, error: validationError };
@@ -357,8 +359,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         nome: formatRegisteredPersonName(data.name),
         telefoneLimpo: normalizePhoneForApi(data.phone),
         password: data.password,
-        matricula: data.requiresMatricula ? data.matricula.trim() : '',
-        endereco: data.requiresComplemento ? data.endereco.trim() : '',
+        matricula: requiresMatricula ? data.matricula.trim() : '',
+        endereco: requiresComplemento ? data.endereco.trim() : '',
         condominio_id: condominioId,
         Foto: '',
         ultimaPublicidadeData: null,

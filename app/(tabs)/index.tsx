@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/components/home-patrocinadores-footer';
 import { HomeHeader, HomeHeaderDivider } from '@/components/home-header';
 import { GuiaInstalacaoSelecaoModal } from '@/components/guia-instalacao-selecao-modal';
+import { InstalarAppLoginModal } from '@/components/instalar-app-login-modal';
 import { LogoutConfirmModal } from '@/components/logout-confirm-modal';
 import { MeusLocaisModal } from '@/components/meus-locais-modal';
 import { PassoAPassoInstalarModal } from '@/components/passo-a-passo-instalar-modal';
@@ -47,6 +48,13 @@ import { useListaEsperaAccess } from '@/hooks/use-lista-espera-access';
 import { registrarImpressaoBanner } from '@/services/publicidade-service';
 import { HOME_MAX_BUTTON_WIDTH } from '@/constants/web-layout';
 import { getGreeting } from '@/utils/get-greeting';
+import {
+  consumePasswordLoginInstallPrompt,
+  hasPasswordLoginInstallPrompt,
+} from '@/utils/instalar-app-login-prompt';
+import { isRunningAsInstalledApp } from '@/utils/is-running-as-installed-app';
+import { openWhatsAppSuporte, WHATSAPP_SUPORTE_OPEN_ERROR } from '@/utils/open-whatsapp-suporte';
+import { formatBrazilianMobilePhone } from '@/utils/phone-mask';
 import { getAdministracaoEntryButtonLabel, shouldShowUsuariosInHeaderMenu } from '@/utils/club-config';
 import { getHomeMenuButtonMetrics } from '@/utils/home-menu-button';
 import { getHomePatrocinadoresFooterHeight } from '@/utils/home-patrocinadores-footer-metrics';
@@ -70,7 +78,10 @@ const BUTTON_GAP = 18;
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { reservaSucesso } = useLocalSearchParams<{ reservaSucesso?: string }>();
+  const { reservaSucesso, loginSenha } = useLocalSearchParams<{
+    reservaSucesso?: string;
+    loginSenha?: string;
+  }>();
   const { showToast } = useAppToast();
   const { width } = useWindowDimensions();
   const { user, authToken, isLoading, signOut, patchUser } = useAuth();
@@ -87,6 +98,8 @@ export default function HomeScreen() {
   const [isMeusLocaisVisible, setIsMeusLocaisVisible] = useState(false);
   const [isTrocarLocalVisible, setIsTrocarLocalVisible] = useState(false);
   const [isGuiaSelecaoVisible, setIsGuiaSelecaoVisible] = useState(false);
+  const [isInstalarAppLoginVisible, setIsInstalarAppLoginVisible] = useState(false);
+  const dismissedInstalarAppLoginRef = useRef(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
   const [guiaInstalacaoAtivo, setGuiaInstalacaoAtivo] = useState<GuiaInstalacao | null>(null);
   const [isAtividadeModalVisible, setIsAtividadeModalVisible] = useState(false);
@@ -163,6 +176,7 @@ export default function HomeScreen() {
       isMeusLocaisVisible ||
       isTrocarLocalVisible ||
       isGuiaSelecaoVisible ||
+      isInstalarAppLoginVisible ||
       isLogoutModalVisible ||
       guiaInstalacaoAtivo != null ||
       hasCompromissoCriticalModal ||
@@ -233,6 +247,47 @@ export default function HomeScreen() {
     void loadSummary({ refreshing: true });
     router.setParams({ reservaSucesso: undefined });
   }, [loadSummary, reservaSucesso, router, showToast]);
+
+  useEffect(() => {
+    if (isLoading || !user) {
+      return;
+    }
+
+    const fromParam = loginSenha === '1';
+
+    if (fromParam) {
+      router.setParams({ loginSenha: undefined });
+    }
+
+    if (dismissedInstalarAppLoginRef.current) {
+      consumePasswordLoginInstallPrompt();
+      return;
+    }
+
+    if (isRunningAsInstalledApp()) {
+      consumePasswordLoginInstallPrompt();
+      return;
+    }
+
+    if (!fromParam && !hasPasswordLoginInstallPrompt()) {
+      return;
+    }
+
+    setIsInstalarAppLoginVisible(true);
+  }, [isLoading, loginSenha, router, user]);
+
+  function handleDismissInstalarAppLogin() {
+    dismissedInstalarAppLoginRef.current = true;
+    consumePasswordLoginInstallPrompt();
+    setIsInstalarAppLoginVisible(false);
+  }
+
+  function handleSeeInstalarAppGuide() {
+    dismissedInstalarAppLoginRef.current = true;
+    consumePasswordLoginInstallPrompt();
+    setIsInstalarAppLoginVisible(false);
+    setIsGuiaSelecaoVisible(true);
+  }
 
   function handleRetryReservas() {
     void loadSummary({ refreshing: true });
@@ -495,6 +550,41 @@ export default function HomeScreen() {
             onPress={() => setIsMeusLocaisVisible(true)}
           />
 
+          <MenuActionButton
+            label="Ajuda no WhatsApp"
+            backgroundColor="#25D366"
+            textColor={COLORS.white}
+            width={buttonWidth}
+            fontSize={menuButtonMetrics.fontSize}
+            buttonHeight={menuButtonMetrics.buttonHeight}
+            iconContainerWidth={menuButtonMetrics.iconContainerWidth}
+            paddingHorizontal={menuButtonMetrics.paddingHorizontal}
+            icon={
+              <Ionicons
+                name="logo-whatsapp"
+                size={menuButtonMetrics.iconSize}
+                color={COLORS.white}
+              />
+            }
+            style={{ marginTop: BUTTON_GAP }}
+            onPress={() => {
+              void (async () => {
+                const opened = await openWhatsAppSuporte({
+                  clube: currentAcademia?.nome,
+                  nome: user.nome,
+                  telefone:
+                    formatBrazilianMobilePhone(
+                      user.telefoneLimpo || user.telefoneCorrigido || user.telefone,
+                    ) || null,
+                });
+
+                if (!opened) {
+                  showToast(WHATSAPP_SUPORTE_OPEN_ERROR, { variant: 'error' });
+                }
+              })();
+            }}
+          />
+
           <Pressable
             style={styles.sairLink}
             onPress={() => setIsLogoutModalVisible(true)}
@@ -539,6 +629,12 @@ export default function HomeScreen() {
         visible={isMeusLocaisVisible}
         user={user}
         onClose={() => setIsMeusLocaisVisible(false)}
+      />
+
+      <InstalarAppLoginModal
+        visible={isInstalarAppLoginVisible}
+        onDismiss={handleDismissInstalarAppLogin}
+        onSeeGuide={handleSeeInstalarAppGuide}
       />
 
       <GuiaInstalacaoSelecaoModal

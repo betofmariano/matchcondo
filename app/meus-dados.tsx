@@ -22,6 +22,8 @@ import { useAppToast } from '@/contexts/app-toast-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useUserContext } from '@/contexts/user-context';
 import { useMeusDadosScreen } from '@/hooks/use-meus-dados-screen';
+import { getApiErrorMessage } from '@/services/api-client';
+import { excluirContaDoUsuario } from '@/services/user-service';
 import { MEUS_DADOS_MESSAGES } from '@/utils/meus-dados';
 
 const COLORS = {
@@ -33,11 +35,12 @@ export default function MeusDadosScreen() {
   const router = useRouter();
   const { showToast } = useAppToast();
   const { confirm } = useAppDialog();
-  const { user, authToken, isLoading: isAuthLoading } = useAuth();
+  const { user, authToken, isLoading: isAuthLoading, signOut } = useAuth();
   const { isLoading: isUserContextLoading } = useUserContext();
 
   const [isPhotoModalVisible, setIsPhotoModalVisible] = useState(false);
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
+  const [isExcluindoConta, setIsExcluindoConta] = useState(false);
 
   const {
     nome,
@@ -87,6 +90,38 @@ export default function MeusDadosScreen() {
 
     if (confirmed) {
       navigateBack();
+    }
+  }
+
+  async function handleExcluirConta() {
+    if (!user || !authToken || isSubmitting || isExcluindoConta) {
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: 'Excluir conta',
+      message:
+        'Sua conta será excluída e você não poderá mais entrar no MatchCondo. Essa ação não pode ser desfeita.',
+      cancelLabel: 'Cancelar',
+      confirmLabel: 'Excluir conta',
+      destructive: true,
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsExcluindoConta(true);
+
+    try {
+      await excluirContaDoUsuario(user.id, authToken);
+      await signOut();
+      router.replace('/login');
+    } catch (error) {
+      showToast(getApiErrorMessage(error) || 'Não foi possível excluir sua conta. Tente novamente.', {
+        variant: 'error',
+      });
+      setIsExcluindoConta(false);
     }
   }
 
@@ -145,6 +180,8 @@ export default function MeusDadosScreen() {
               onComplementoChange={handleComplementoChange}
               onPhotoPress={() => setIsPhotoModalVisible(true)}
               onAlterarSenhaPress={() => setIsPasswordModalVisible(true)}
+              onExcluirContaPress={() => void handleExcluirConta()}
+              isExcluindoConta={isExcluindoConta}
               onCancel={handleCancel}
               onConfirm={() => void handleConfirm()}
             />

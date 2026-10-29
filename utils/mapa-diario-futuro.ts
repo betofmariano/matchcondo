@@ -122,6 +122,7 @@ export function filterMapaDiarioFuturoReservaveis(
   );
 }
 
+/** Horários já liberados, incluindo lotados — o mapa precisa aparecer mesmo completo. */
 export function filterMapaDiarioFuturoExibiveis(
   items: MapaDiarioFuturoItem[],
   filters: MapaDiarioFuturoFilters,
@@ -215,8 +216,8 @@ export function getProximaLiberacaoTimestamp(
 }
 
 /**
- * Fallback para countdown: menor dataLiberacao futura do mapa,
- * sem exigir vaga livre (só para exibir o tempo até liberar).
+ * Fallback para countdown: menor dataLiberacao futura nos itens do mapa
+ * já carregado (diário ou mensal).
  */
 export function getProximaDataLiberacaoFromMapaItems(
   items: MapaDiarioFuturoItem[],

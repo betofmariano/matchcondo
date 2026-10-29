@@ -351,7 +351,7 @@ export function useCadastroHorariosScreen({
     try {
       await createHorario(
         {
-          academias_id: clubSelection.selectedClubId,
+          condominio_id: clubSelection.selectedClubId,
           atividades_id: atividadeId,
           atividade: selectedAtividade.atividade,
           capacidade: selectedAtividade.capacidade,

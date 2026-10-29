@@ -1,9 +1,9 @@
 {
-  "name": "Reservas do Morador",
-  "short_name": "Reservas do Morador",
+  "name": "MatchCondo",
+  "short_name": "MatchCondo",
   "description": "Reservas de espaços do condomínio com facilidade e justiça.",
-  "start_url": "https://reservasdomorador.com.br/",
-  "scope": "https://reservasdomorador.com.br/",
+  "start_url": "https://matchcondo.com.br/",
+  "scope": "https://matchcondo.com.br/",
   "display": "standalone",
   "background_color": "#F4F6F4",
   "theme_color": "#0F7A6C",

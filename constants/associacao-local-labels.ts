@@ -18,9 +18,6 @@ export const ASSOCIACAO_LOCAL_LABELS = {
   cadastroPendente:
     'Seu cadastro ainda não foi aprovado. Aguarde a confirmação do local de associação.',
   cadastroBloqueado: 'Este cadastro está bloqueado. Entre em contato com o local de associação.',
-  telefoneDuplicado:
-    'Existem vários cadastros com este telefone. Entre em contato com o gestor do seu local de associação para regularizar.',
-  telefoneDuplicadoTitulo: 'Cadastros duplicados',
 } as const;
 
 export function formatAssociacaoLocalFallback(id: number): string {

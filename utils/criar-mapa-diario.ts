@@ -1,4 +1,5 @@
 import type { MapaDiarioItem } from '@/types/mapa-diario';
+import { readTimestamp } from '@/utils/normalize-api-fields';
 
 export function startOfLocalDay(date: Date): Date {
   const normalized = new Date(date);
@@ -22,18 +23,55 @@ export function findLatestDataAtividadeTimestamp(items: MapaDiarioItem[]): numbe
   let latest: number | null = null;
 
   for (const item of items) {
-    if (item.dataAtividade == null) {
+    if (item.dataAtividade == null || !Number.isFinite(item.dataAtividade)) {
       continue;
     }
 
-    const dayStart = startOfLocalDay(new Date(item.dataAtividade)).getTime();
-
-    if (latest === null || dayStart > latest) {
-      latest = dayStart;
+    if (latest === null || item.dataAtividade > latest) {
+      latest = item.dataAtividade;
     }
   }
 
   return latest;
+}
+
+export function findLatestDataAtividadeTimestampFromApi(raw: unknown): number | null {
+  if (!Array.isArray(raw)) {
+    return null;
+  }
+
+  let latest: number | null = null;
+
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') {
+      continue;
+    }
+
+    const timestamp = readTimestamp(item as Record<string, unknown>, [
+      'dataAtividade',
+      'data_atividade',
+    ]);
+
+    if (timestamp == null) {
+      continue;
+    }
+
+    if (latest === null || timestamp > latest) {
+      latest = timestamp;
+    }
+  }
+
+  return latest;
+}
+
+/** Dia civil local da `dataAtividade`. */
+export function localCalendarDateFromTimestamp(ms: number): Date {
+  return startOfLocalDay(new Date(ms));
+}
+
+/** Próximo dia do calendário, sem somar 24 horas ao timestamp. */
+export function nextCalendarDate(date: Date): Date {
+  return addDaysToDate(startOfLocalDay(date), 1);
 }
 
 export function suggestNextMapaDiarioDate(
@@ -44,7 +82,7 @@ export function suggestNextMapaDiarioDate(
     return startOfLocalDay(referenceDate);
   }
 
-  return addDaysToDate(new Date(latestDataAtividadeMs), 1);
+  return nextCalendarDate(localCalendarDateFromTimestamp(latestDataAtividadeMs));
 }
 
 export function formatMapaDiarioShortDate(date: Date): string {
@@ -63,11 +101,28 @@ export function formatMapaDiarioFullDate(date: Date): string {
   return `${day}/${month}/${year}`;
 }
 
-/** Data no formato esperado por POST /mapaDiarioGerar (`YYYY-MM-DD`). */
+/** Data no formato esperado por GET /mapaDiarioGerar (`YYYY-MM-DD`). */
 export function formatMapaDiarioApiDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
 
   return `${year}-${month}-${day}`;
+}
+
+const MAPA_DIARIO_API_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export function isMapaDiarioApiDate(value: string): boolean {
+  const match = MAPA_DIARIO_API_DATE_RE.exec(value.trim());
+
+  if (!match) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }

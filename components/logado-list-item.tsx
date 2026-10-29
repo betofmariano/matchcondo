@@ -2,9 +2,17 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { LogadoBooleanCell } from '@/components/logado-boolean-cell';
+import { LogadoTableCell } from '@/components/logado-table-cell';
 import { LOGADOS_TABLE_MIN_WIDTH } from '@/constants/web-layout';
 import type { LogadoRecord } from '@/types/logado';
 import { formatLogadoCreatedAt, formatLogadoTelefone, getLogadoClubeNome } from '@/utils/logado-lista-format';
+import {
+  LOGADOS_COL_WIDTHS,
+  LOGADOS_TABLE_GAP,
+  LOGADOS_TABLE_ROW_MIN_HEIGHT,
+  LOGADOS_TABLE_ROW_PADDING_H,
+  LOGADOS_TABLE_ROW_PADDING_V,
+} from '@/utils/logado-table-layout';
 
 type LogadoListItemProps = {
   logado: LogadoRecord;
@@ -36,38 +44,50 @@ export function LogadoListItem({
           <Ionicons name="trash-outline" size={20} color={COLORS.blue} />
         </Pressable>
 
-        <Text style={[styles.tableCell, styles.colData]} numberOfLines={1}>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.data} textStyle={styles.tableCell}>
           {createdLabel}
-        </Text>
-        <Text style={[styles.tableCell, styles.colIdXano]} numberOfLines={1}>
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.id} textStyle={styles.tableCell}>
           {logado.users_id}
-        </Text>
-        <Text style={[styles.tableCell, styles.colNome]} numberOfLines={1}>
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.nome} align="left" textStyle={styles.tableCell}>
           {logado.nome || '—'}
-        </Text>
+        </LogadoTableCell>
 
-        <LogadoBooleanCell value={logado.aprovado} />
-        <LogadoBooleanCell value={logado.gestor} />
-        <LogadoBooleanCell value={logado.administrador} />
-        <LogadoBooleanCell value={logado.bloqueado} />
-        <LogadoBooleanCell value={logado.logadoXano} />
-        <LogadoBooleanCell value={logado.logadoBubble === true} />
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag}>
+          <LogadoBooleanCell value={logado.aprovado} />
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag}>
+          <LogadoBooleanCell value={logado.gestor} />
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag}>
+          <LogadoBooleanCell value={logado.administrador} />
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag}>
+          <LogadoBooleanCell value={logado.bloqueado} />
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag}>
+          <LogadoBooleanCell value={logado.logadoXano} />
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag}>
+          <LogadoBooleanCell value={logado.logadoBubble === true} />
+        </LogadoTableCell>
 
-        <Text style={[styles.tableCell, styles.colWidth]} numberOfLines={1}>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.width} textStyle={styles.tableCell}>
           {logado.larguraPagina}
-        </Text>
-        <Text style={[styles.tableCell, styles.colClube]} numberOfLines={1}>
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.clube} align="left" textStyle={styles.tableCell}>
           {clubeLabel}
-        </Text>
-        <Text style={[styles.tableCell, styles.colTelefone]} numberOfLines={1}>
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.telefone} textStyle={styles.tableCell}>
           {formatLogadoTelefone(logado)}
-        </Text>
-        <Text style={[styles.tableCell, styles.colPlataforma]} numberOfLines={1}>
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.plataforma} textStyle={styles.tableCell}>
           {logado.plataforma || '—'}
-        </Text>
-        <Text style={[styles.tableCell, styles.colDispositivo]} numberOfLines={1}>
+        </LogadoTableCell>
+        <LogadoTableCell width={LOGADOS_COL_WIDTHS.dispositivo} align="left" textStyle={styles.tableCell}>
           {logado.dispositivo || '—'}
-        </Text>
+        </LogadoTableCell>
       </Pressable>
     );
   }
@@ -117,52 +137,19 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    gap: LOGADOS_TABLE_GAP,
+    minHeight: LOGADOS_TABLE_ROW_MIN_HEIGHT,
+    paddingVertical: LOGADOS_TABLE_ROW_PADDING_V,
+    paddingHorizontal: LOGADOS_TABLE_ROW_PADDING_H,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     minWidth: LOGADOS_TABLE_MIN_WIDTH,
   },
   tableCell: {
-    fontSize: 13,
     color: COLORS.navy,
   },
-  colData: {
-    width: 110,
-    flexShrink: 0,
-  },
-  colIdXano: {
-    width: 72,
-    flexShrink: 0,
-  },
-  colNome: {
-    width: 300,
-    flexShrink: 0,
-  },
-  colWidth: {
-    width: 56,
-    flexShrink: 0,
-    textAlign: 'center',
-  },
-  colClube: {
-    width: 150,
-    flexShrink: 0,
-  },
-  colTelefone: {
-    width: 130,
-    flexShrink: 0,
-  },
-  colPlataforma: {
-    width: 100,
-    flexShrink: 0,
-  },
-  colDispositivo: {
-    width: 300,
-    flexShrink: 0,
-  },
   deleteButton: {
-    width: 32,
+    width: LOGADOS_COL_WIDTHS.delete,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

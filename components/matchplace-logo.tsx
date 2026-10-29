@@ -9,6 +9,7 @@ import {
   ViewStyle,
 } from 'react-native';
 
+import { APP_DISPLAY_NAME } from '@/constants/app-branding';
 import { MATCHPOINT_COLORS } from '@/constants/theme';
 
 type AppLogoProps = {
@@ -59,7 +60,7 @@ export function AppLogo({ size = 'default', style }: AppLogoProps) {
     <View
       style={[styles.mark, extraStyle, { width }]}
       accessibilityRole="image"
-      accessibilityLabel="Reservas do Morador">
+      accessibilityLabel={APP_DISPLAY_NAME}>
       <Image
         source={LOGO_ICON_SOURCE}
         style={[styles.icon, { width, height: width }]}
@@ -74,11 +75,11 @@ export function AppLogo({ size = 'default', style }: AppLogoProps) {
             lineHeight: Math.round(fontSize * 1.22),
           },
         ]}
-        numberOfLines={2}
+        numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.75}
         maxFontSizeMultiplier={1.15}>
-        Reservas do{'\n'}Morador
+        {APP_DISPLAY_NAME}
       </Text>
     </View>
   );

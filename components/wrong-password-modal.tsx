@@ -6,8 +6,10 @@ type WrongPasswordModalProps = {
   visible: boolean;
   title: string;
   message: string;
-  onForgotPassword: () => void;
-  onClose: () => void;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  onPrimary: () => void;
+  onSecondary: () => void;
 };
 
 const COLORS = {
@@ -20,14 +22,16 @@ export function WrongPasswordModal({
   visible,
   title,
   message,
-  onForgotPassword,
-  onClose,
+  primaryLabel = 'Esqueci minha senha',
+  secondaryLabel = 'Tentar novamente',
+  onPrimary,
+  onSecondary,
 }: WrongPasswordModalProps) {
   const { width } = useWindowDimensions();
   const isWide = width >= WEB_MAX_CONTENT_WIDTH;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onSecondary}>
       <View style={styles.overlay}>
         <View style={[styles.card, isWide && styles.cardWide]}>
           <Text style={styles.title}>{title}</Text>
@@ -35,18 +39,18 @@ export function WrongPasswordModal({
 
           <Pressable
             style={styles.primaryButton}
-            onPress={onForgotPassword}
+            onPress={onPrimary}
             accessibilityRole="button"
-            accessibilityLabel="Esqueci minha senha">
-            <Text style={styles.primaryButtonText}>Esqueci minha senha</Text>
+            accessibilityLabel={primaryLabel}>
+            <Text style={styles.primaryButtonText}>{primaryLabel}</Text>
           </Pressable>
 
           <Pressable
             style={styles.secondaryButton}
-            onPress={onClose}
+            onPress={onSecondary}
             accessibilityRole="button"
-            accessibilityLabel="Tentar novamente">
-            <Text style={styles.secondaryButtonText}>Tentar novamente</Text>
+            accessibilityLabel={secondaryLabel}>
+            <Text style={styles.secondaryButtonText}>{secondaryLabel}</Text>
           </Pressable>
         </View>
       </View>

@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { ReservaSummary } from '@/types/home-summary';
 import { formatDateLabel, formatGameTime } from '@/utils/jogos-time';
+import { formatReservaQuando } from '@/utils/reserva-periodo';
 
 type ReservaSummaryListProps = {
   reservas: ReservaSummary[];
@@ -21,7 +22,7 @@ type ReservaSummaryListProps = {
 };
 
 const COL_DELETE_WIDTH = 32;
-const COL_DATA_WIDTH = 148;
+const COL_DATA_WIDTH = 160;
 const COL_LOCAL_WIDTH = 120;
 const COL_ATIVIDADE_WIDTH = 160;
 const COL_UNIDADE_WIDTH = 72;
@@ -113,9 +114,9 @@ export function ReservaSummaryList({
           const isCancelling = cancellingReservaId === reserva.id;
 
           return (
-            <View key={reserva.id} style={styles.tableRow}>
+            <View key={`${reserva.programacao}-${reserva.id}`} style={styles.tableRow}>
               <Text style={[styles.tableCell, styles.colData]} numberOfLines={1}>
-                {formatReservaSummaryDataHora(reserva.dataAtividade)}
+                {formatReservaQuando(reserva, formatReservaSummaryDataHora)}
               </Text>
               {showLocal ? (
                 <Text style={[styles.tableCell, styles.colLocal]} numberOfLines={2}>

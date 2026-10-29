@@ -24,3 +24,7 @@ export function stripNonNumeric(value: string): string {
 export function normalizePhoneForApi(value: string): string {
   return stripNonNumeric(value).trim();
 }
+
+export function normalizeLoginPassword(value: string): string {
+  return stripNonNumeric(value);
+}

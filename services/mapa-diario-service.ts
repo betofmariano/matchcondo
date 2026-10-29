@@ -1,8 +1,8 @@
 import { API_ENDPOINTS, buildMapaDiarioGerarPath, buildMapaDiarioItemPath } from '@/constants/api';
-import { authDeleteRequest, authGetRequest, authPatchRequest } from '@/services/api-client';
+import { authDeleteRequest, authGetRequest, authPatchRequest, getRequest } from '@/services/api-client';
 import type { MapaDiarioResponse } from '@/types/mapa-diario';
 import type { MapaDiarioFuturoItem } from '@/types/mapa-diario-futuro';
-import { formatMapaDiarioApiDate } from '@/utils/criar-mapa-diario';
+import { findLatestDataAtividadeTimestampFromApi } from '@/utils/criar-mapa-diario';
 import { normalizeMapaDiarioFuturoListFromApi } from '@/utils/normalize-mapa-diario-futuro';
 
 function buildMapaDiarioPath(academiasId: number): string {
@@ -64,20 +64,19 @@ export async function apagarMapaDiario(authToken: string): Promise<ApagarMapaDia
   return data;
 }
 
+/** Maior `dataAtividade` já gerada. A API não tem filtro; a data mais recente sai da lista. */
+export async function getUltimaDataAtividadeMapaDiario(): Promise<number | null> {
+  const data = await getRequest<unknown>(API_ENDPOINTS.mapaDiario);
+
+  return findLatestDataAtividadeTimestampFromApi(data);
+}
+
 export type CriarMapaDiarioResponse = Record<string, unknown>;
 
-export async function criarMapaDiario(
-  authToken: string,
-  dataSugerida: Date,
-): Promise<CriarMapaDiarioResponse> {
-  const data = formatMapaDiarioApiDate(dataSugerida);
-
+export async function criarMapaDiario(data: string): Promise<CriarMapaDiarioResponse> {
   console.log('Criação de mapa diário solicitada', data);
 
-  const response = await authGetRequest<CriarMapaDiarioResponse>(
-    buildMapaDiarioGerarPath(data),
-    authToken,
-  );
+  const response = await getRequest<CriarMapaDiarioResponse>(buildMapaDiarioGerarPath(data));
 
   console.log('Resposta da criação do mapa diário recebida');
 

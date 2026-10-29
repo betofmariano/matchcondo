@@ -65,7 +65,7 @@ function filterReservasUsuarioByPeriod(
 }
 
 /**
- * Lista de Reservas do Reservas do Morador: sempre MensalPorSemana.
+ * Lista de Reservas do MatchCondo: sempre MensalPorSemana.
  * Nome da unidade vem do addon `_atividadeunidade` na própria reserva.
  */
 export async function getListaReservasAcademia(

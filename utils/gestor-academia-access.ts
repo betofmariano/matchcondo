@@ -1,7 +1,5 @@
 import type { Academia } from '@/types/academia';
-import type { PermissaoGestorModulo } from '@/types/academia-permissoes-gestor';
 import type { UserContextPermissions } from '@/types/user-context';
-import { isModuloAtivoNaAcademia } from '@/utils/academia-permissoes-gestor';
 
 export type GestorScreenPermissionKey =
   | 'podeAcessarRelatorioListaEspera'
@@ -10,14 +8,6 @@ export type GestorScreenPermissionKey =
   | 'podeAcessarListaReservasPeriodo'
   | 'podeAcessarProgramacaoAtividades'
   | 'podeGerirLocal';
-
-const PERMISSION_MODULO_MAP: Partial<Record<GestorScreenPermissionKey, PermissaoGestorModulo>> = {
-  podeAcessarRelatorioListaEspera: 'relatorioListaEspera',
-  podeAcessarMapaFrequencia: 'mapaFrequencia',
-  podeAcessarListaReservasAtividade: 'listaReservasAtividade',
-  podeAcessarListaReservasPeriodo: 'resumoPeriodo',
-  podeAcessarProgramacaoAtividades: 'programacaoAtividades',
-};
 
 export function canAccessGestorScreen({
   isAdministrador,
@@ -39,17 +29,7 @@ export function canAccessGestorScreen({
   }
 
   if (isAdministrador) {
-    if (!canManageSelectedAcademia || !selectedAcademia) {
-      return false;
-    }
-
-    const modulo = PERMISSION_MODULO_MAP[permissionKey];
-
-    if (modulo) {
-      return isModuloAtivoNaAcademia(selectedAcademia, modulo);
-    }
-
-    return true;
+    return canManageSelectedAcademia && selectedAcademia != null;
   }
 
   return permissions[permissionKey] === true;

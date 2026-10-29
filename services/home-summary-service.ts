@@ -50,12 +50,41 @@ function getModalidadeLabel(reserva: Pick<ReservaUsuario, 'jogoDuplas'>): string
   return 'Simples';
 }
 
+function reservaSortTime(entry: {
+  dataAtividade: number;
+  programacao?: string | null;
+  diaSemana?: number | null;
+  hora?: number | null;
+  minutos?: number | null;
+}): number {
+  if (entry.programacao === 'semanal') {
+    const dia = entry.diaSemana ?? 7;
+    const hora = entry.hora ?? 0;
+    const minutos = entry.minutos ?? 0;
+
+    return Number.MAX_SAFE_INTEGER - (8 - dia) * 24 * 60 - (24 * 60 - (hora * 60 + minutos));
+  }
+
+  return entry.dataAtividade > 0 ? entry.dataAtividade : Number.MAX_SAFE_INTEGER;
+}
+
 function sortReservasByDataHorarioAtividadeUnidade<
-  T extends { dataAtividade: number; atividade?: string | null; unidadeNome?: string | null },
+  T extends {
+    dataAtividade: number;
+    atividade?: string | null;
+    unidadeNome?: string | null;
+    programacao?: string | null;
+    diaSemana?: number | null;
+    hora?: number | null;
+    minutos?: number | null;
+  },
 >(entries: T[]): T[] {
   return [...entries].sort((a, b) => {
-    if (a.dataAtividade !== b.dataAtividade) {
-      return a.dataAtividade - b.dataAtividade;
+    const timeA = reservaSortTime(a);
+    const timeB = reservaSortTime(b);
+
+    if (timeA !== timeB) {
+      return timeA - timeB;
     }
 
     const atividadeCompare = (a.atividade ?? '').localeCompare(b.atividade ?? '', 'pt-BR', {
@@ -192,6 +221,11 @@ export function mapReservaUsuarioToReservaSummary(
     reservasdamha_id: reserva.reservasdamha_id,
     mapadiariodamha_id: reserva.mapadiariodamha_id,
     mapadiario_id: reserva.mapadiario_id,
+    mapasemanal_id: reserva.mapasemanal_id,
+    programacao: reserva.programacao,
+    diaSemana: reserva.diaSemana,
+    hora: reserva.hora,
+    minutos: reserva.minutos,
     dataAtividade: reserva.dataAtividade,
     quadra: reserva.quadra,
     academias_id: academiasId,

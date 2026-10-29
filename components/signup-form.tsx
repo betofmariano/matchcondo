@@ -18,6 +18,7 @@ import { OkMessageModal } from '@/components/ok-message-modal';
 import { PasswordTextField } from '@/components/password-text-field';
 import { PhoneTextField } from '@/components/phone-text-field';
 import { PhotoSourceModal } from '@/components/photo-source-modal';
+import { PrivacyPolicyLink } from '@/components/privacy-policy-link';
 import { useAuth } from '@/contexts/auth-context';
 import {
   CLUB_SELECTION_MODAL_LARGE_SCREEN_BREAKPOINT,
@@ -33,6 +34,7 @@ import {
   SIGNUP_VALIDATION_MESSAGES,
 } from '@/utils/phone-validation';
 import { navigateToHome } from '@/utils/auth-navigation';
+import { openWhatsAppSuporte, WHATSAPP_SUPORTE_OPEN_ERROR } from '@/utils/open-whatsapp-suporte';
 
 type SignupFormProps = {
   onSubmittingChange?: (isSubmitting: boolean) => void;
@@ -152,7 +154,24 @@ export function SignupForm({ onSubmittingChange }: SignupFormProps) {
       return;
     }
 
-    const validationError = getSignupValidationError(signupValidationParams);
+    let academiasForValidation = academias;
+
+    try {
+      academiasForValidation = await getAcademias();
+      setAcademias(academiasForValidation);
+    } catch {
+      // Usa a lista já carregada se o refresh falhar.
+    }
+
+    const academia = academiasForValidation.find((item) => item.id === academiasId) ?? null;
+    const requiresMatriculaNow = academia?.tituloSocio === true;
+    const requiresComplementoNow = academia?.complemento === true;
+
+    const validationError = getSignupValidationError({
+      ...signupValidationParams,
+      requiresMatricula: requiresMatriculaNow,
+      requiresComplemento: requiresComplementoNow,
+    });
 
     if (validationError) {
       if (validationError === SIGNUP_VALIDATION_MESSAGES.matriculaRequired) {
@@ -194,9 +213,9 @@ export function SignupForm({ onSubmittingChange }: SignupFormProps) {
           academiasId,
           photoAsset,
           matricula,
-          requiresMatricula,
+          requiresMatricula: requiresMatriculaNow,
           endereco,
-          requiresComplemento,
+          requiresComplemento: requiresComplementoNow,
         },
         { larguraPagina: Math.round(screenWidth) },
       );
@@ -328,6 +347,27 @@ export function SignupForm({ onSubmittingChange }: SignupFormProps) {
           disabled={isSubmitting}
           style={styles.submitButton}
         />
+
+        <AuthButton
+          label="Ajuda no WhatsApp"
+          variant="actionLink"
+          onPress={() => {
+            void (async () => {
+              const clube = academias.find((item) => item.id === academiasId)?.nome;
+              const opened = await openWhatsAppSuporte({
+                clube,
+                nome: name,
+              });
+
+              if (!opened) {
+                showSignupError(WHATSAPP_SUPORTE_OPEN_ERROR, 'WhatsApp');
+              }
+            })();
+          }}
+          disabled={isSubmitting}
+        />
+
+        <PrivacyPolicyLink />
 
         {isSubmitting ? (
           <View style={styles.loadingRow}>

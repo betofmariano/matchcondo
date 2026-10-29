@@ -51,7 +51,7 @@ export type UpdateAcademiaPayload = {
   nome: string;
   logoUrl: string;
   tituloSocio: boolean;
-  AssociacaoExigida: boolean;
+  associacaoExigida: boolean;
   temRegulamento: boolean;
   ativo: boolean;
   complemento: boolean;

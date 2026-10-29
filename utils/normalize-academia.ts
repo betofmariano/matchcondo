@@ -81,7 +81,9 @@ export function normalizeAcademiaFromApi(raw: unknown): Academia | null {
     id,
     nome,
     logoUrl: readString(record, ['logoUrl']),
-    tituloSocio: normalizeBoolean(record.tituloSocio),
+    tituloSocio: normalizeBoolean(
+      record.tituloSocio ?? record.TituloSocio ?? record.titulo_socio,
+    ),
     associacaoExigida: normalizeBoolean(record.AssociacaoExigida ?? record.associacaoExigida),
     temRegulamento: normalizeBoolean(record.temRegulamento),
     ativo: normalizeBoolean(record.ativo),

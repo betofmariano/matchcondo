@@ -18,10 +18,13 @@ type ToastAction = {
   onPress: () => void;
 };
 
+type ToastPlacement = 'bottom' | 'center';
+
 type ToastOptions = {
   duration?: number;
   variant?: ToastVariant;
   action?: ToastAction;
+  placement?: ToastPlacement;
 };
 
 type ToastState = {
@@ -29,6 +32,7 @@ type ToastState = {
   duration: number;
   variant: ToastVariant;
   action?: ToastAction;
+  placement: ToastPlacement;
 };
 
 type AppToastContextValue = {
@@ -54,14 +58,21 @@ function AppToastOverlay({
   onDismiss: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const isCenter = toast.placement === 'center';
 
   return (
-    <View pointerEvents="box-none" style={styles.overlay}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.overlay, isCenter ? styles.overlayCenter : styles.overlayBottom]}>
       <View
         pointerEvents={toast.action ? 'auto' : 'none'}
         style={[
           styles.toast,
-          { backgroundColor: TOAST_COLORS[toast.variant], marginBottom: Math.max(insets.bottom, 16) },
+          isCenter ? styles.toastCenter : styles.toastBottom,
+          {
+            backgroundColor: TOAST_COLORS[toast.variant],
+            marginBottom: isCenter ? 0 : Math.max(insets.bottom, 16),
+          },
         ]}>
         <Text style={styles.message}>{toast.message}</Text>
 
@@ -102,6 +113,7 @@ export function AppToastProvider({ children }: { children: ReactNode }) {
         duration: options?.duration ?? DEFAULT_DURATION_MS,
         variant: options?.variant ?? 'error',
         action: options?.action,
+        placement: options?.placement ?? 'bottom',
       };
 
       setToast(nextToast);
@@ -151,14 +163,18 @@ export function useAppToast(): AppToastContextValue {
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 20,
     zIndex: 999,
     elevation: 999,
   },
+  overlayBottom: {
+    justifyContent: 'flex-end',
+  },
+  overlayCenter: {
+    justifyContent: 'center',
+  },
   toast: {
-    width: '100%',
     maxWidth: 420,
     borderRadius: 12,
     paddingHorizontal: 16,
@@ -169,6 +185,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
+  },
+  toastBottom: {
+    width: '100%',
+  },
+  toastCenter: {
+    paddingHorizontal: 22,
   },
   message: {
     color: '#FFFFFF',

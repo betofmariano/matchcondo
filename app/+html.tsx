@@ -12,7 +12,7 @@ export default function Root({ children }: PropsWithChildren) {
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
 
-        <title>Reservas do Morador</title>
+        <title>MatchCondo</title>
 
         <meta
           name="description"
@@ -49,12 +49,12 @@ export default function Root({ children }: PropsWithChildren) {
 
         <meta
           name="application-name"
-          content="Reservas do Morador"
+          content="MatchCondo"
         />
 
         <meta
           name="apple-mobile-web-app-title"
-          content="Reservas do Morador"
+          content="MatchCondo"
         />
 
         <meta

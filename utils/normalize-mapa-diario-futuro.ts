@@ -66,6 +66,7 @@ export function normalizeMapaDiarioFuturoFromApi(raw: unknown): MapaDiarioFuturo
     atividades_id: atividadesId,
     atividade: readString(record, ['atividade']),
     dataAtividade,
+    /** Liberação para reserva; usado no countdown. */
     dataLiberacao: readTimestamp(record, ['dataLiberacao', 'data_liberacao']),
     limiteCancelamento: readTimestamp(record, ['limiteCancelamento', 'limite_cancelamento']),
     limiteReserva: readTimestamp(record, ['limiteReserva', 'limite_reserva']),

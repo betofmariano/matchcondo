@@ -3,6 +3,7 @@ import type { User } from '@/types/user';
 import type { UserLocalAssociation } from '@/types/user-local';
 import {
   canManageAcademia,
+  isUserAdministrador,
   isUserGestorOfAcademiaFromAssociation,
 } from '@/utils/club-config';
 import { isModuloAtivoNaAcademia } from '@/utils/academia-permissoes-gestor';
@@ -90,11 +91,15 @@ export function canAccessAcademiaListaReservas(
   associations: UserLocalAssociation[] = [],
   user?: User | null,
 ): boolean {
-  if (!academia || !academiaTemModuloListaReservas(academia)) {
+  if (!academia || !user) {
     return false;
   }
 
-  if (!user) {
+  if (isUserAdministrador(user)) {
+    return true;
+  }
+
+  if (!academiaTemModuloListaReservas(academia)) {
     return false;
   }
 
@@ -132,6 +137,10 @@ export function canAccessListaReservasPage(
 ): boolean {
   if (!user) {
     return userHasReservableMensalPorSemanaAssociation(academias, associations);
+  }
+
+  if (isUserAdministrador(user)) {
+    return true;
   }
 
   if (

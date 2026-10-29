@@ -18,9 +18,30 @@ function resolveWebHomeUrl(): string {
   return '/';
 }
 
+export type HomeNavigationParams = {
+  loginSenha?: string;
+};
+
+function buildWebHomeUrl(params?: HomeNavigationParams): string {
+  const baseUrl = resolveWebHomeUrl();
+
+  if (params?.loginSenha !== '1') {
+    return baseUrl;
+  }
+
+  return `${baseUrl}?loginSenha=1`;
+}
+
 /** Redireciona para a home após login ou cadastro. */
-export function navigateToHome(router: Pick<Router, 'replace'>): void {
-  router.replace(HOME_ROUTE);
+export function navigateToHome(
+  router: Pick<Router, 'replace'>,
+  params?: HomeNavigationParams,
+): void {
+  if (params?.loginSenha === '1') {
+    router.replace({ pathname: HOME_ROUTE, params: { loginSenha: '1' } });
+  } else {
+    router.replace(HOME_ROUTE);
+  }
 
   if (Platform.OS !== 'web' || typeof window === 'undefined') {
     return;
@@ -28,7 +49,7 @@ export function navigateToHome(router: Pick<Router, 'replace'>): void {
 
   window.requestAnimationFrame(() => {
     if (isAuthPath(window.location.pathname)) {
-      window.location.replace(resolveWebHomeUrl());
+      window.location.replace(buildWebHomeUrl(params));
     }
   });
 }

@@ -20,6 +20,7 @@ import { fetchHomeSummary } from '@/services/home-summary-service';
 import type { ReservaSummary } from '@/types/home-summary';
 import { canCancelReservaUsuarioList } from '@/utils/reserva-adversario';
 import { formatFullDateLabel, formatGameTime } from '@/utils/jogos-time';
+import { formatReservaQuando } from '@/utils/reserva-periodo';
 
 const COLORS = {
   background: '#FFFFFF',
@@ -44,8 +45,10 @@ function ReservaCard({
   onCancelPress: () => void;
 }) {
   const canCancelReserva = canCancelReservaUsuarioList(reserva);
-  const dataLabel = formatFullDateLabel(new Date(reserva.dataAtividade));
-  const horaLabel = formatGameTime(reserva.dataAtividade);
+  const quandoLabel = formatReservaQuando(
+    reserva,
+    (timestamp) => `${formatFullDateLabel(new Date(timestamp))} · ${formatGameTime(timestamp)}`,
+  );
 
   return (
     <View style={styles.card}>
@@ -62,7 +65,7 @@ function ReservaCard({
           </Pressable>
         ) : null}
       </View>
-      <Text style={styles.detailLine}>{`${dataLabel} · ${horaLabel}`}</Text>
+      <Text style={styles.detailLine}>{quandoLabel}</Text>
       {showLocal ? (
         <Text style={styles.detailLine}>{reserva.atividade?.trim() || 'Não informada'}</Text>
       ) : null}
@@ -182,7 +185,7 @@ export default function MinhasReservasScreen() {
         ) : reservas.length > 1 ? (
           <ReservaSummaryList
             reservas={reservas}
-            showLocal={showLocalColumn}
+            showLocal={false}
             canCancelReserva={canCancelReservaUsuarioList}
             onCancelPress={setReservaParaCancelar}
           />

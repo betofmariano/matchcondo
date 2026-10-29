@@ -25,6 +25,8 @@ type MeusDadosFormProps = {
   onComplementoChange: (value: string) => void;
   onPhotoPress: () => void;
   onAlterarSenhaPress: () => void;
+  onExcluirContaPress: () => void;
+  isExcluindoConta?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -48,10 +50,12 @@ export function MeusDadosForm({
   onComplementoChange,
   onPhotoPress,
   onAlterarSenhaPress,
+  onExcluirContaPress,
+  isExcluindoConta = false,
   onCancel,
   onConfirm,
 }: MeusDadosFormProps) {
-  const isDisabled = disabled || isSubmitting;
+  const isDisabled = disabled || isSubmitting || isExcluindoConta;
   const isConfirmDisabled = isDisabled || !canConfirm;
 
   return (
@@ -122,6 +126,15 @@ export function MeusDadosForm({
         onPress={onAlterarSenhaPress}
         disabled={isDisabled}
         style={styles.passwordButton}
+      />
+
+      <AuthButton
+        label={isExcluindoConta ? 'Excluindo conta...' : 'Excluir minha conta'}
+        variant="outline"
+        onPress={onExcluirContaPress}
+        disabled={isDisabled}
+        style={styles.deleteButton}
+        labelStyle={styles.deleteButtonLabel}
       />
 
       <View style={styles.actions}>
@@ -197,7 +210,15 @@ const styles = StyleSheet.create({
     height: 120,
   },
   passwordButton: {
+    marginBottom: 12,
+  },
+  deleteButton: {
+    borderColor: MATCHPOINT_COLORS.error,
     marginBottom: 16,
+  },
+  deleteButtonLabel: {
+    color: MATCHPOINT_COLORS.error,
+    fontWeight: '700',
   },
   actions: {
     gap: 12,

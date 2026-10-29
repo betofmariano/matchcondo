@@ -11,7 +11,7 @@ export type MapaAtividadeUnidadeTab = {
  * Sem unidades (ou só uma) → lista vazia (UI sem abas).
  */
 export function buildMapaAtividadeUnidadeTabs(
-  horarios: MapaDiarioFuturoItem[],
+  horarios: Array<Pick<MapaDiarioFuturoItem, 'atividadeunidade_id' | 'atividadeUnidadeNome'>>,
   unidadesById?: Map<number, AtividadeUnidade> | null,
 ): MapaAtividadeUnidadeTab[] {
   const labels = new Map<number, string>();

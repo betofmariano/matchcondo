@@ -51,6 +51,7 @@ export function MapaMensalPorSemanaSemanaSelector({
         ) : (
           <View key={option.semana} style={[styles.optionButton, styles.optionButtonDisabled]}>
             <Text style={styles.optionTextDisabled}>{formatMapaMensalPorSemanaSemanaLabel(option)}</Text>
+            <Text style={styles.optionHint}>Limite de reservas atingido</Text>
           </View>
         ),
       )}
@@ -107,6 +108,13 @@ const styles = StyleSheet.create({
   optionTextDisabled: {
     fontSize: OPTION_FONT_SIZE,
     fontWeight: '700',
+    color: COLORS.muted,
+    textAlign: 'center',
+  },
+  optionHint: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '600',
     color: COLORS.muted,
     textAlign: 'center',
   },

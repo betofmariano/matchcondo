@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 
+import { APP_DISPLAY_NAME } from '@/constants/app-branding';
 import { APP_VERSION } from '@/constants/app-version';
 import { WEB_MAX_CONTENT_WIDTH } from '@/constants/web-layout';
 import type { RemoteVersion } from '@/types/version';
@@ -63,7 +64,7 @@ export function AppUpdateModal({
         <View style={[styles.card, isWide && styles.cardWide]}>
           <Text style={styles.title}>Nova versão disponível</Text>
 
-          <Text style={styles.message}>Existe uma nova versão do Reservas do Morador disponível.</Text>
+          <Text style={styles.message}>Existe uma nova versão do {APP_DISPLAY_NAME} disponível.</Text>
 
           <Text style={styles.versionLine}>
             Versão atual:{'\n'}

@@ -1,11 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AuthButton } from '@/components/auth-button';
 import { HOME_MAX_BUTTON_WIDTH } from '@/constants/web-layout';
 import { MATCHPOINT_COLORS } from '@/constants/theme';
 import { useAppToast } from '@/contexts/app-toast-context';
-import { useAuth } from '@/contexts/auth-context';
-import { useUserContext } from '@/contexts/user-context';
 import {
   CRIAR_MAPA_DIARIO_MESSAGES,
   useCriarMapaDiario,
@@ -24,8 +22,6 @@ export function CriarMapaDiarioPanel({
   enabled = true,
 }: CriarMapaDiarioPanelProps) {
   const { showToast } = useAppToast();
-  const { authToken } = useAuth();
-  const { effectiveAcademiasId } = useUserContext();
 
   const {
     isLoading,
@@ -33,12 +29,12 @@ export function CriarMapaDiarioPanel({
     isCreating,
     createError,
     ultimaDataLabel,
-    dataSugeridaLabel,
+    dataSugerida,
+    setDataSugerida,
+    dataSugeridaValida,
     loadDates,
     criarMapa,
   } = useCriarMapaDiario({
-    academiasId: effectiveAcademiasId,
-    authToken,
     enabled: enabled && user.administrador === true,
   });
 
@@ -57,7 +53,7 @@ export function CriarMapaDiarioPanel({
     showToast(CRIAR_MAPA_DIARIO_MESSAGES.createSuccess, { variant: 'success' });
   }
 
-  const isActionDisabled = disabled || isLoading || isCreating || !dataSugeridaLabel || dataSugeridaLabel === '—';
+  const isActionDisabled = disabled || isLoading || isCreating || !dataSugeridaValida;
 
   return (
     <View style={styles.container}>
@@ -67,7 +63,17 @@ export function CriarMapaDiarioPanel({
         {isLoading ? (
           <ActivityIndicator size="small" color={MATCHPOINT_COLORS.white} />
         ) : (
-          <Text style={styles.dateBoxText}>{dataSugeridaLabel}</Text>
+          <TextInput
+            value={dataSugerida}
+            onChangeText={setDataSugerida}
+            placeholder="YYYY-mm-dd"
+            placeholderTextColor="rgba(255,255,255,0.55)"
+            editable={!disabled && !isCreating}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            style={styles.dateBoxText}
+          />
         )}
       </View>
 
@@ -120,10 +126,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   dateBoxText: {
+    width: '100%',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     color: MATCHPOINT_COLORS.white,
     textAlign: 'center',
+    padding: 0,
   },
   createButton: {
     width: '100%',

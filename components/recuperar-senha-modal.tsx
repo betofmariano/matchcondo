@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { AuthButton } from '@/components/auth-button';
+import { APP_DISPLAY_NAME } from '@/constants/app-branding';
 import { AuthTextField } from '@/components/auth-text-field';
 import { PasswordTextField } from '@/components/password-text-field';
 import { PhoneTextField } from '@/components/phone-text-field';
@@ -319,7 +320,7 @@ export function RecuperarSenhaModal({
         {renderStepLabel(1)}
         <Text style={styles.title}>Recuperar senha</Text>
         <Text style={styles.description}>
-          Informe o telefone cadastrado no Reservas do Morador. Enviaremos um código de recuperação por
+          Informe o telefone cadastrado no {APP_DISPLAY_NAME}. Enviaremos um código de recuperação por
           WhatsApp para confirmar sua identidade antes de alterar a senha.
         </Text>
 
@@ -408,7 +409,7 @@ export function RecuperarSenhaModal({
         {renderStepLabel(3)}
         <Text style={styles.title}>Alterar senha</Text>
         <Text style={styles.description}>
-          Código confirmado. Agora crie uma nova senha de acesso para sua conta Reservas do Morador.
+          Código confirmado. Agora crie uma nova senha de acesso para sua conta {APP_DISPLAY_NAME}.
         </Text>
         <Text style={styles.infoText}>
           Após salvar, entraremos automaticamente na sua conta — você não precisará fazer login

@@ -1,6 +1,6 @@
 import { ASSOCIACAO_LOCAL_LABELS } from '@/constants/associacao-local-labels';
 import { API_ENDPOINTS, buildGetUserPath, buildPesquisarUsuarioPath, XANO_API_BASE_URL } from '@/constants/api';
-import { normalizePhoneForApi } from '@/constants/auth';
+import { normalizeLoginPassword, normalizePhoneForApi } from '@/constants/auth';
 import { ApiError, authGetRequest, authPatchRequest, getRequest, postRequest } from '@/services/api-client';
 import type {
   AlterarPasswordUserRequest,
@@ -41,10 +41,12 @@ export type LoginRequest = {
 
 export type LoginResponse = {
   authToken?: string;
-  /** Resposta nova do `/auth/login-safe`. */
+  /** Resposta do `/auth/login-safe`. */
   senhaCorreta?: boolean;
   encontrado?: boolean;
   totalEncontrado?: number;
+  /** telefone | senha_vazia | sem_senha | senha | token */
+  codigoErro?: string | null;
   /** Legado — mantido durante a migração. */
   sucesso?: boolean;
   foto?: string;
@@ -337,6 +339,10 @@ function buildLoginResponse(payload: unknown): LoginResponse {
     senhaCorreta: toBoolean(record.senhaCorreta),
     sucesso: toBoolean(record.sucesso),
     encontrado: toBoolean(record.encontrado),
+    codigoErro:
+      typeof record.codigoErro === 'string' && record.codigoErro.trim()
+        ? record.codigoErro.trim()
+        : null,
     totalEncontrado: normalizeTotalEncontrado(record.totalEncontrado ?? record.TotalEncontrado),
     foto: extractPhotoUrlFromApiPayload(payload) ?? undefined,
   };
@@ -355,6 +361,8 @@ export async function buildSignupFoneFormData(data: SignupFoneRequest): Promise<
   formData.append('telefoneLimpo', data.telefoneLimpo);
   formData.append('password', data.password);
   formData.append('matricula', data.matricula);
+  formData.append('socioTitulo', data.matricula);
+  formData.append('Socio', data.matricula);
   formData.append('endereco', data.endereco);
   formData.append('complemento', data.endereco);
   formData.append('condominio_id', String(condominioId));
@@ -417,15 +425,9 @@ export async function loginSafe(request: LoginRequest): Promise<LoginResponse> {
   return buildLoginResponse(
     await postRequest<unknown>(API_ENDPOINTS.auth.loginSafe, {
       telefoneLimpo: normalizePhoneForApi(request.telefoneLimpo),
-      password: request.password,
+      password: normalizeLoginPassword(request.password),
     }),
   );
-}
-
-export async function sendWzapCadastroDuplicado(telefoneLimpo: string): Promise<void> {
-  await postRequest(API_ENDPOINTS.sendWzapCadastroDuplicado, {
-    telefoneLimpo: normalizePhoneForApi(telefoneLimpo),
-  });
 }
 
 export async function getMe(token: string): Promise<User> {

@@ -17,6 +17,7 @@ import { LogadoClubeFilter } from '@/components/logado-clube-filter';
 import { LogadoGestorFilter } from '@/components/logado-gestor-filter';
 import { LogadoDetalhesModal } from '@/components/logado-detalhes-modal';
 import { LogadoListItem } from '@/components/logado-list-item';
+import { LogadoTableCell } from '@/components/logado-table-cell';
 import { ScreenHeader, ScreenHeaderDivider } from '@/components/screen-header';
 import { WebScreenContainer } from '@/components/web-screen-container';
 import { LOGADOS_SCREEN_MAX_WIDTH, LOGADOS_TABLE_MIN_WIDTH } from '@/constants/web-layout';
@@ -27,6 +28,13 @@ import {
   useListaLogadosScreen,
 } from '@/hooks/use-lista-logados-screen';
 import type { LogadoRecord } from '@/types/logado';
+import {
+  LOGADOS_COL_WIDTHS,
+  LOGADOS_TABLE_GAP,
+  LOGADOS_TABLE_ROW_MIN_HEIGHT,
+  LOGADOS_TABLE_ROW_PADDING_H,
+  LOGADOS_TABLE_ROW_PADDING_V,
+} from '@/utils/logado-table-layout';
 
 const COLORS = {
   background: '#FFFFFF',
@@ -130,20 +138,48 @@ export function ListaLogadosScreen() {
   const tableHeader = (
     <View style={styles.tableHeader}>
       <View style={styles.deleteHeaderSpacer} />
-      <Text style={[styles.tableHeaderText, styles.colData]}>Data</Text>
-      <Text style={[styles.tableHeaderText, styles.colIdXano]}>ID</Text>
-      <Text style={[styles.tableHeaderText, styles.colNome]}>Nome do Usuário</Text>
-      <Text style={[styles.tableHeaderText, styles.colFlag]}>aprov</Text>
-      <Text style={[styles.tableHeaderText, styles.colFlag]}>gest</Text>
-      <Text style={[styles.tableHeaderText, styles.colFlag]}>adm</Text>
-      <Text style={[styles.tableHeaderText, styles.colFlag]}>bloq</Text>
-      <Text style={[styles.tableHeaderText, styles.colFlag]}>xano</Text>
-      <Text style={[styles.tableHeaderText, styles.colFlag]}>bub</Text>
-      <Text style={[styles.tableHeaderText, styles.colWidth]}>width</Text>
-      <Text style={[styles.tableHeaderText, styles.colClube]}>Local</Text>
-      <Text style={[styles.tableHeaderText, styles.colTelefone]}>Telefone</Text>
-      <Text style={[styles.tableHeaderText, styles.colPlataforma]}>Plataforma</Text>
-      <Text style={[styles.tableHeaderText, styles.colDispositivo]}>Dispositivo</Text>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.data} textStyle={styles.tableHeaderText}>
+        Data
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.id} textStyle={styles.tableHeaderText}>
+        ID
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.nome} align="left" textStyle={styles.tableHeaderText}>
+        Nome do Usuário
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag} textStyle={styles.tableHeaderText}>
+        aprov
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag} textStyle={styles.tableHeaderText}>
+        gest
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag} textStyle={styles.tableHeaderText}>
+        adm
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag} textStyle={styles.tableHeaderText}>
+        bloq
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag} textStyle={styles.tableHeaderText}>
+        xano
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.flag} textStyle={styles.tableHeaderText}>
+        bub
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.width} textStyle={styles.tableHeaderText}>
+        width
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.clube} align="left" textStyle={styles.tableHeaderText}>
+        Local
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.telefone} textStyle={styles.tableHeaderText}>
+        Telefone
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.plataforma} textStyle={styles.tableHeaderText}>
+        Plataforma
+      </LogadoTableCell>
+      <LogadoTableCell width={LOGADOS_COL_WIDTHS.dispositivo} align="left" textStyle={styles.tableHeaderText}>
+        Dispositivo
+      </LogadoTableCell>
     </View>
   );
 
@@ -345,9 +381,10 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    gap: LOGADOS_TABLE_GAP,
+    minHeight: LOGADOS_TABLE_ROW_MIN_HEIGHT,
+    paddingVertical: LOGADOS_TABLE_ROW_PADDING_V,
+    paddingHorizontal: LOGADOS_TABLE_ROW_PADDING_H,
     backgroundColor: COLORS.highlight,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -359,45 +396,7 @@ const styles = StyleSheet.create({
     color: COLORS.navy,
   },
   deleteHeaderSpacer: {
-    width: 32,
-    flexShrink: 0,
-  },
-  colData: {
-    width: 110,
-    flexShrink: 0,
-  },
-  colIdXano: {
-    width: 72,
-    flexShrink: 0,
-  },
-  colNome: {
-    width: 300,
-    flexShrink: 0,
-  },
-  colFlag: {
-    width: 42,
-    flexShrink: 0,
-    textAlign: 'center',
-  },
-  colWidth: {
-    width: 56,
-    flexShrink: 0,
-    textAlign: 'center',
-  },
-  colClube: {
-    width: 150,
-    flexShrink: 0,
-  },
-  colTelefone: {
-    width: 130,
-    flexShrink: 0,
-  },
-  colPlataforma: {
-    width: 100,
-    flexShrink: 0,
-  },
-  colDispositivo: {
-    width: 300,
+    width: LOGADOS_COL_WIDTHS.delete,
     flexShrink: 0,
   },
   centerContent: {

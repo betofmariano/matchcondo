@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
+import { CriarMapaDiarioPanel } from '@/components/criar-mapa-diario-panel';
 import { MenuActionButton } from '@/components/menu-action-button';
 import { MATCHPOINT_COLORS } from '@/constants/theme';
 import { useUserContext } from '@/contexts/user-context';
@@ -48,6 +49,7 @@ export function AdministracaoMenu({ user, access }: AdministracaoMenuProps) {
   const isAdministrador = isUserAdministrador(user);
   const menuButtonMetrics = getHomeMenuButtonMetrics(width);
   const menuButtonWidth = getAdministracaoMenuButtonWidth(width);
+  const [showCriarMapaDiarioPanel, setShowCriarMapaDiarioPanel] = useState(false);
 
   const gestaoItems = useMemo(
     () =>
@@ -65,7 +67,10 @@ export function AdministracaoMenu({ user, access }: AdministracaoMenuProps) {
     [currentAcademia, isAdministrador],
   );
 
-  function renderMenuButton(item: AdminMenuItem, options?: { isFirst?: boolean }) {
+  function renderMenuButton(
+    item: AdminMenuItem,
+    options?: { isFirst?: boolean; onPress?: () => void },
+  ) {
     return (
       <MenuActionButton
         label={item.label}
@@ -84,7 +89,7 @@ export function AdministracaoMenu({ user, access }: AdministracaoMenuProps) {
           />
         }
         style={options?.isFirst ? undefined : { marginTop: BUTTON_GAP }}
-        onPress={() => handleNavigate(item.route)}
+        onPress={options?.onPress ?? (() => handleNavigate(item.route))}
       />
     );
   }
@@ -139,6 +144,18 @@ export function AdministracaoMenu({ user, access }: AdministracaoMenuProps) {
               {renderMenuButton(item, { isFirst: index === 0 })}
             </View>
           ))}
+          {!showCriarMapaDiarioPanel ? (
+            <View style={styles.menuButtonSlot}>
+              {renderMenuButton(
+                { label: 'Criar Mapa Diario', route: 'criar-mapa-diario', icon: 'calendar-outline' },
+                { onPress: () => setShowCriarMapaDiarioPanel(true) },
+              )}
+            </View>
+          ) : (
+            <View style={[styles.criarMapaSlot, { width: menuButtonWidth }]}>
+              <CriarMapaDiarioPanel user={user} enabled={showCriarMapaDiarioPanel} />
+            </View>
+          )}
         </View>
       ) : null}
 
@@ -162,6 +179,10 @@ const styles = StyleSheet.create({
   },
   menuButtonSlot: {
     width: '100%',
+    alignItems: 'center',
+  },
+  criarMapaSlot: {
+    marginTop: BUTTON_GAP,
     alignItems: 'center',
   },
   sectionTitle: {

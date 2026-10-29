@@ -1,1 +1,1 @@
-export const WEB_APP_ORIGIN = 'https://reservasdomorador.com.br';
+export const WEB_APP_ORIGIN = 'https://matchcondo.com.br';

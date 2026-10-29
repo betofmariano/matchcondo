@@ -16,6 +16,7 @@ import { cancelarReservaForUser } from '@/services/reserva-horario-flow-service'
 import type { ReservaSummary } from '@/types/home-summary';
 import type { User } from '@/types/user';
 import { formatFullDateLabel, formatGameTime } from '@/utils/jogos-time';
+import { formatReservaSemanalQuando } from '@/utils/reserva-periodo';
 import { canCancelReservaUsuarioList, isReservaQuadra } from '@/utils/reserva-adversario';
 
 type CancelarReservaModalProps = {
@@ -153,6 +154,7 @@ export function CancelarReservaModal({
 
   const dataLabel = formatFullDateLabel(new Date(reserva.dataAtividade));
   const horaLabel = formatGameTime(reserva.dataAtividade);
+  const semanal = reserva.programacao === 'semanal';
   const isQuadra = isReservaQuadra(reserva);
 
   return (
@@ -163,8 +165,14 @@ export function CancelarReservaModal({
           <Text style={styles.message}>Deseja realmente cancelar esta reserva?</Text>
 
           <View style={styles.detailsBox}>
-            <Text style={styles.detailText}>Data: {dataLabel}</Text>
-            <Text style={styles.detailText}>Horário: {horaLabel}</Text>
+            {semanal ? (
+              <Text style={styles.detailText}>Horário: {formatReservaSemanalQuando(reserva)}</Text>
+            ) : (
+              <>
+                <Text style={styles.detailText}>Data: {dataLabel}</Text>
+                <Text style={styles.detailText}>Horário: {horaLabel}</Text>
+              </>
+            )}
             {isQuadra ? (
               <Text style={styles.detailText}>Quadra: {reserva.quadra}</Text>
             ) : (

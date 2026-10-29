@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { CancelarListaEsperaModal } from '@/components/cancelar-lista-espera-modal';
@@ -9,6 +9,7 @@ import type { ListaEsperaSummary, ReservaSummary } from '@/types/home-summary';
 import type { User } from '@/types/user';
 import { formatListaEsperaPosicaoLabel } from '@/utils/lista-espera-posicao';
 import { formatGameTime, formatRelativeDateLabel } from '@/utils/jogos-time';
+import { formatReservaQuando } from '@/utils/reserva-periodo';
 import { canCancelReservaUsuarioList } from '@/utils/reserva-adversario';
 
 type HomeCompromissosSectionProps = {
@@ -67,7 +68,11 @@ function ReservaSummaryCard({
 
       <View style={styles.cardContent}>
         <Text style={styles.dateTimeLine}>
-          {`${formatRelativeDateLabel(new Date(reserva.dataAtividade))}, ${formatGameTime(reserva.dataAtividade)}`}
+          {formatReservaQuando(
+            reserva,
+            (timestamp) =>
+              `${formatRelativeDateLabel(new Date(timestamp))}, ${formatGameTime(timestamp)}`,
+          )}
         </Text>
         {showLocal ? <Text style={styles.detailLine}>{reserva.localNome}</Text> : null}
         <Text style={styles.detailLine}>
@@ -128,6 +133,8 @@ export function HomeCompromissosSection({
   onReservaRemoved,
   onCriticalModalVisibilityChange,
 }: HomeCompromissosSectionProps) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isPhone = screenWidth < 600;
   const [reservaParaCancelar, setReservaParaCancelar] = useState<ReservaSummary | null>(null);
   const [listaParaCancelar, setListaParaCancelar] = useState<ListaEsperaSummary | null>(null);
 
@@ -151,7 +158,7 @@ export function HomeCompromissosSection({
   }
 
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, isPhone ? styles.sectionPhone : null]}>
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={COLORS.blue} />
@@ -174,7 +181,7 @@ export function HomeCompromissosSection({
                   <Text style={styles.listSectionTitle}>Minhas Reservas</Text>
                   <ReservaSummaryList
                     reservas={reservas}
-                    showLocal={showLocalColumn}
+                    showLocal={false}
                     canCancelReserva={canCancelReservaUsuarioList}
                     onCancelPress={setReservaParaCancelar}
                   />
@@ -238,6 +245,9 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 24,
     marginBottom: 28,
+  },
+  sectionPhone: {
+    paddingLeft: 8,
   },
   loadingContainer: {
     alignItems: 'center',

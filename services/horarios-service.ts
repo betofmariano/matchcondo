@@ -3,6 +3,7 @@ import { authDeleteRequest, authGetRequest, authPostRequest } from '@/services/a
 import type { CreateHorarioPayload, Horario } from '@/types/horario';
 import {
   filterHorariosByAcademiaAndAtividade,
+  normalizeHorarioFromApi,
   normalizeHorariosFromApi,
 } from '@/utils/normalize-horario';
 
@@ -20,7 +21,14 @@ export async function getHorariosByAcademia(
 }
 
 export async function createHorario(payload: CreateHorarioPayload, authToken: string): Promise<Horario> {
-  return authPostRequest<Horario>(API_ENDPOINTS.horarios, authToken, payload);
+  const data = await authPostRequest<unknown>(API_ENDPOINTS.horarios, authToken, payload);
+  const horario = normalizeHorarioFromApi(data);
+
+  if (!horario || horario.academias_id <= 0) {
+    throw new Error('O horário foi enviado, mas o condomínio não foi gravado.');
+  }
+
+  return horario;
 }
 
 export async function deleteHorario(horariosId: number, authToken: string): Promise<unknown> {

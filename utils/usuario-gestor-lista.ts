@@ -14,6 +14,7 @@ export const LISTA_USUARIOS_GESTOR_MESSAGES = {
   loadError: 'Não foi possível carregar os moradores.',
   permission: 'Você não tem permissão para gerir os moradores deste condomínio.',
   empty: 'Não foram encontrados moradores.',
+  selectLocal: 'Selecione o local para listar os usuários.',
   approveSuccess: 'Usuário aprovado com sucesso.',
   blockSuccess: 'Usuário bloqueado com sucesso.',
   unblockSuccess: 'Usuário desbloqueado com sucesso.',

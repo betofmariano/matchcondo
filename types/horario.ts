@@ -20,7 +20,7 @@ export type Horario = {
 } & HorarioDiasSemana;
 
 export type CreateHorarioPayload = {
-  academias_id: number;
+  condominio_id: number;
   atividades_id: number;
   atividade: string;
   capacidade: number;

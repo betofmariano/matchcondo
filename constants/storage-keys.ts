@@ -7,3 +7,5 @@ export const INSTALLED_VERSION_STORAGE_KEY = 'reservasdomorador_installed_versio
 export const UPDATE_IN_PROGRESS_SESSION_KEY = 'reservasdomorador_update_in_progress';
 export const UPDATE_DISMISSED_SESSION_KEY = 'reservasdomorador-version-dismissed';
 export const PENDING_RECOVERY_STORAGE_KEY = '@reservasdomorador:pendingRecovery';
+export const PASSWORD_LOGIN_INSTALL_PROMPT_SESSION_KEY =
+  'reservasdomorador_password_login_install_prompt';

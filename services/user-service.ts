@@ -1,6 +1,19 @@
-import { API_ENDPOINTS, buildGetUserPath, buildUsersItemPath, buildUsersLocalItemPath } from '@/constants/api';
+import {
+  API_ENDPOINTS,
+  buildGetUserPath,
+  buildUsersDeletePath,
+  buildUsersItemPath,
+  buildUsersLocalItemPath,
+} from '@/constants/api';
 import { UPDATE_PHOTO_FORM_FIELDS } from '@/constants/user-photo-form';
-import { ApiError, authGetRequest, authMultipartPatchRequest, authPatchRequest, getRequest } from '@/services/api-client';
+import {
+  ApiError,
+  authDeleteRequest,
+  authGetRequest,
+  authMultipartPatchRequest,
+  authPatchRequest,
+  getRequest,
+} from '@/services/api-client';
 import type { PhotoAsset, UpdatePhotoResponse } from '@/types/user-photo';
 import type { User } from '@/types/user';
 import { normalizeUserFromApi } from '@/utils/normalize-user';
@@ -121,4 +134,17 @@ export async function updateUserPhoto(
 
     throw new ApiError('Não foi possível atualizar sua foto. Tente novamente.');
   }
+}
+
+/** DELETE /users/{users_id} da conta autenticada. */
+export async function excluirContaDoUsuario(usersId: number, authToken: string): Promise<void> {
+  if (usersId <= 0) {
+    throw new ApiError('Não foi possível identificar a conta.');
+  }
+
+  if (!authToken.trim()) {
+    throw new ApiError('Sessão expirada. Faça login novamente.');
+  }
+
+  await authDeleteRequest(buildUsersDeletePath(usersId), authToken);
 }

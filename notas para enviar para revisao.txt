@@ -1,0 +1,28 @@
+Demo account. No invitation, approval code, or manual setup is required.
+
+Phone: (99) 99999-9999
+Password: 123456
+
+The app is in Portuguese. Sign-in uses a numeric password (4 to 6 digits).
+
+1. Open MatchCondo. The first screen is the login screen.
+2. Leave the "Entrar" tab selected. Do not open "Cadastrar".
+3. In "Telefone/WhatsApp", enter (99) 99999-9999.
+4. In "Senha", enter 123456.
+5. Tap "Entrar".
+6. The home screen opens. This account is already active.
+
+To review reservations:
+7. Tap "Reservar Horário", choose an activity, and open the schedule.
+8. Green cells are free. Pink cells are taken.
+9. You can leave without booking. A booking uses a real condominium slot; cancel it from the home list if you complete one.
+
+To review account deletion:
+10. On the home screen, tap "Meus Dados".
+11. Scroll to "Excluir minha conta".
+12. A confirmation dialog appears before anything is deleted. Please cancel that dialog so this shared demo account stays available.
+
+Do not tap "Esqueci minha senha". That sends a WhatsApp code, and this phone number is only for review.
+
+Privacy policy: https://matchcondo.com.br/politica-de-privacidade
+The same link is on the login screen, under "Política de privacidade".

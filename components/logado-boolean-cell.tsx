@@ -44,7 +44,6 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
   emptyDot: {
     backgroundColor: COLORS.muted,

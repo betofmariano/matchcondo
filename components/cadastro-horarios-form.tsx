@@ -38,6 +38,7 @@ type CadastroHorariosFormProps = {
     atividade?: string;
   };
   atividadeSelectorDisabled?: boolean;
+  localSelectorDisabled?: boolean;
   disabled?: boolean;
 };
 
@@ -73,6 +74,7 @@ export function CadastroHorariosForm({
   onToggleDia,
   fieldErrors,
   atividadeSelectorDisabled = false,
+  localSelectorDisabled = false,
   disabled = false,
 }: CadastroHorariosFormProps) {
   const showLocalSelector = showClubSelector && !isLoadingClubs;
@@ -87,7 +89,7 @@ export function CadastroHorariosForm({
           isLoading={isLoadingClubs}
           error={clubsLoadError}
           onRetry={onRetryClubs}
-          disabled={disabled}
+          disabled={localSelectorDisabled}
           label="Escolha o local"
           placeholder="Selecione o local"
           modalTitle="Escolha o local"

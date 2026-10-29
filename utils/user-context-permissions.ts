@@ -41,11 +41,19 @@ function canAccessModuloRelatorio(
   const { administrador, gestor, professor, bloqueado, currentAcademia, currentUserLocal, user } =
     input;
 
-  if (!hasValidLocalAccess(user, currentUserLocal, bloqueado) || !currentAcademia) {
+  if (!currentAcademia) {
     return false;
   }
 
-  if (administrador || gestor) {
+  if (administrador) {
+    return true;
+  }
+
+  if (!hasValidLocalAccess(user, currentUserLocal, bloqueado)) {
+    return false;
+  }
+
+  if (gestor) {
     return isModuloAtivoNaAcademia(currentAcademia, modulo);
   }
 

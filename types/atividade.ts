@@ -27,6 +27,6 @@ export type AtividadeOption = {
 };
 
 export type CreateAtividadePayload = {
-  academias_id: number;
-  atividade: string;
+  nome: string;
+  condominio_id: number;
 };

@@ -57,7 +57,14 @@ export async function createAtividade(
   payload: CreateAtividadePayload,
   authToken: string,
 ): Promise<Atividade> {
-  return authPostRequest<Atividade>(API_ENDPOINTS.atividades, authToken, payload);
+  const data = await authPostRequest<unknown>(API_ENDPOINTS.atividades, authToken, payload);
+  const atividade = normalizeAtividadeFromApi(data);
+
+  if (!atividade) {
+    throw new Error('A atividade foi enviada, mas o nome ou o condomínio não foram gravados.');
+  }
+
+  return atividade;
 }
 
 export async function updateAtividade(

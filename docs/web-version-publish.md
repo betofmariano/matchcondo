@@ -30,11 +30,11 @@ Para evitar aviso de nova versão antes dos arquivos estarem disponíveis:
 
 Site de produção:
 
-`https://reservasdomorador.com.br`
+`https://matchcondo.com.br`
 
 O arquivo de versão deve ficar acessível em:
 
-`https://reservasdomorador.com.br/version.json`
+`https://matchcondo.com.br/version.json`
 
 ## Regras importantes
 

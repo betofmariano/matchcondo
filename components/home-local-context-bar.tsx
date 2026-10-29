@@ -48,6 +48,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     marginBottom: 20,
+    paddingHorizontal: 12,
     gap: 10,
   },
   localCard: {

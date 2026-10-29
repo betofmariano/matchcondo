@@ -47,7 +47,6 @@ export const API_ENDPOINTS = {
   sendWzapAdicionar: '/sendWzapAdicionar',
   sendWzapReserva: '/sendWzapreserva',
   sendWzapReservaReact: '/sendWzapreservaReact',
-  sendWzapCadastroDuplicado: '/sendWzapCadastroDuplicado',
   meusJogos: '/meusJogos',
   reservas: '/reservas',
   reservasUsuario: '/reservasUsuario',
@@ -61,14 +60,16 @@ export const API_ENDPOINTS = {
   mapaDiario: '/mapadiario',
   mapaDiarioFuturo: '/mapadiarioFuturo',
   mapaMensalPorSemana: '/mapamensalporsemana',
-  /** Primeira dataLiberacao futura do mapa da atividade (countdown de reserva). */
-  pegarDataLiberacao: '/pegarDataLiberacao',
   atividadeunidade: '/atividadeunidade',
   acessos: '/acessos',
   criarReserva: '/criarReserva',
   criarReservaReact: '/criarReservaReact',
   criarReservaMensalPorSemana: '/criarReservaMensalPorSemana',
-  cancelarReservaMensalPorSemana: '/cancelarReservaMensalPorSemana',
+  criarReservaDiaria: '/criarReservaDiaria',
+  criarReservaSemanal: '/criarReservaSemanal',
+  mapaSemanal: '/mapasemanal',
+  reservasDiarias: '/reservasdiarias',
+  reservasSemanais: '/reservassemanais',
   reservasMensalPorSemana: '/reservasmensalporsemana',
   logados: '/logados',
   quadras: '/quadras',
@@ -214,23 +215,6 @@ export function buildReservasMensalPorSemanaListPath(academiasId: number): strin
 
 export function buildReservasMensalPorSemanaItemPath(reservasMensalPorSemanaId: number): string {
   return `${API_ENDPOINTS.reservasMensalPorSemana}/${reservasMensalPorSemanaId}`;
-}
-
-export function buildCancelarReservaMensalPorSemanaPath(
-  reservasId: number,
-  numeroCancelamento?: number,
-): string {
-  const path = `${API_ENDPOINTS.cancelarReservaMensalPorSemana}/${reservasId}`;
-
-  if (numeroCancelamento == null) {
-    return path;
-  }
-
-  const params = new URLSearchParams({
-    numeroCancelamento: String(numeroCancelamento),
-  });
-
-  return `${path}?${params.toString()}`;
 }
 
 export function buildReservaItemPath(reservasId: number): string {
@@ -446,16 +430,20 @@ export function buildMapaMensalPorSemanaItemPath(mapaMensalPorSemanaId: number):
   return `${API_ENDPOINTS.mapaMensalPorSemana}/${mapaMensalPorSemanaId}`;
 }
 
-export function buildPegarDataLiberacaoPath(atividadesId: number): string {
-  const params = new URLSearchParams({
-    atividades_id: String(atividadesId),
-  });
-
-  return `${API_ENDPOINTS.pegarDataLiberacao}?${params.toString()}`;
-}
-
 export function buildMapaDiarioItemPath(mapaDiarioId: number): string {
   return `${API_ENDPOINTS.mapaDiario}/${mapaDiarioId}`;
+}
+
+export function buildMapaSemanalItemPath(mapasemanalId: number): string {
+  return `${API_ENDPOINTS.mapaSemanal}/${mapasemanalId}`;
+}
+
+export function buildReservasDiariasItemPath(reservasdiariasId: number): string {
+  return `${API_ENDPOINTS.reservasDiarias}/${reservasdiariasId}`;
+}
+
+export function buildReservasSemanaisItemPath(reservassemanaisId: number): string {
+  return `${API_ENDPOINTS.reservasSemanais}/${reservassemanaisId}`;
 }
 
 export function buildExcluirFrequenciaPath(
